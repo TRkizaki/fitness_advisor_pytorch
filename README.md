@@ -67,6 +67,8 @@ GET  /api/database/health     # Database status
 ## Usage Examples
 
 ### Test AI Motion Analysis
+
+#### Basic Test
 ```bash
 # Create test request with base64 video data
 echo '{"video_base64":"'$(base64 -w0 image.jpg)'"}' > test_request.json
@@ -75,6 +77,61 @@ echo '{"video_base64":"'$(base64 -w0 image.jpg)'"}' > test_request.json
 curl -X POST http://localhost:3000/api/ai/analyze-form \
   -H "Content-Type: application/json" \
   -d @test_request.json | jq
+```
+
+#### Video Processing Workflow
+```bash
+# Complete workflow: MOV file → compression → base64 → API test
+ffmpeg -i input.mov -t 10 -vf scale=640:480 -c:v libx264 -crf 28 temp.mp4 && \
+base64 -w 0 temp.mp4 > video_b64.txt && \
+echo '{"video_base64":"'$(cat video_b64.txt)'","exercise_type":"squat"}' > video_test.json && \
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @video_test.json | jq
+
+# Alternative: Process image files
+ffmpeg -i workout_photo.jpg -vf scale=640:480 -q:v 2 processed.jpg && \
+base64 -w 0 processed.jpg > image_b64.txt && \
+echo '{"video_base64":"'$(cat image_b64.txt)'"}' > image_test.json && \
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @image_test.json | jq
+
+# Batch processing multiple files
+for file in *.mov; do
+  echo "Processing $file..."
+  ffmpeg -i "$file" -t 5 -vf scale=480:360 -c:v libx264 -crf 30 "processed_$file.mp4" && \
+  base64 -w 0 "processed_$file.mp4" > "${file%.mov}_b64.txt" && \
+  echo '{"video_base64":"'$(cat "${file%.mov}_b64.txt")'"}' > "${file%.mov}_test.json" && \
+  curl -s -X POST http://localhost:3000/api/ai/analyze-form \
+    -H "Content-Type: application/json" \
+    -d @"${file%.mov}_test.json" | jq '.data.overall_score'
+done
+```
+
+#### Exercise-Specific Tests
+```bash
+# Pushup analysis test
+echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"pushup"}' > pushup_test.json
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @pushup_test.json | jq
+
+# Plank analysis test  
+echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"plank"}' > plank_test.json
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @plank_test.json | jq
+
+# Debug mode with detailed information
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @ai_test_request_fixed.json | jq '.'
+
+# Measure response time
+time curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @ai_test_request_fixed.json
 ```
 
 ### Pretty JSON Output
