@@ -287,10 +287,99 @@ RUST_LOG=info          # Enable logging
 DATABASE_URL=sqlite:./fitness_advisor.db  # Database path
 ```
 
-### Default Data
-- 3 demo users (Beginner, Intermediate, Advanced)
-- 5 exercises (squats, pushups, planks, burpees, deadlifts)
-- Sample workout sessions
+## Using Default Data
+
+The application automatically seeds the database with demo data on first run, perfect for testing and exploration.
+
+### Demo Users
+Three users with different fitness levels are pre-created:
+
+```bash
+# Get all demo users
+curl -s http://localhost:3000/api/users | jq '.data[] | {id, name, fitness_level}'
+```
+
+**Available Users:**
+- `demo_user` - Intermediate level (28 years old, 175cm, 70kg)
+- `beginner_user` - Beginner level (25 years old, 165cm, 60kg)  
+- `advanced_user` - Advanced level (35 years old, 180cm, 80kg)
+
+### Pre-loaded Exercises
+Five exercises are automatically added to the database:
+
+```bash
+# View all exercises
+curl -s http://localhost:3000/api/exercises | jq '.data[] | {id, name, difficulty_level, exercise_type}'
+```
+
+**Available Exercises:**
+- `squat` - Bodyweight squat (difficulty: 2)
+- `pushup` - Classic push-up (difficulty: 3)
+- `plank` - Core plank hold (difficulty: 3)
+- `burpee` - Full-body burpee (difficulty: 8)
+- `deadlift` - Barbell deadlift (difficulty: 7)
+
+### Sample Workout Data
+Demo workout sessions are pre-logged for `demo_user`:
+
+```bash
+# Get user's workout history
+curl -s http://localhost:3000/api/users/demo_user/workouts | jq '.data[] | {date, total_duration_minutes, calories_burned, user_rating}'
+
+# Get user's progress analysis
+curl -s http://localhost:3000/api/users/demo_user/progress | jq '.data'
+```
+
+### Testing with Demo Data
+
+#### Get Personalized Recommendations
+```bash
+# Beginner workout plan
+curl -s http://localhost:3000/api/users/beginner_user/recommendations | jq '.data'
+
+# Intermediate workout plan  
+curl -s http://localhost:3000/api/users/demo_user/recommendations | jq '.data'
+
+# Advanced workout plan
+curl -s http://localhost:3000/api/users/advanced_user/recommendations | jq '.data'
+```
+
+#### View Exercise Details
+```bash
+# Get specific exercise information
+curl -s http://localhost:3000/api/exercises | jq '.data[] | select(.id=="squat")'
+
+# Get exercise instructions and safety tips
+curl -s http://localhost:3000/api/exercises | jq '.data[] | select(.id=="pushup") | {instructions, safety_tips}'
+```
+
+#### Database Health Check
+```bash
+# See how much demo data is loaded
+curl -s http://localhost:3000/api/database/health | jq '.data'
+```
+
+**Expected Output:**
+```json
+{
+  "connected": true,
+  "users_count": 3,
+  "exercises_count": 5, 
+  "workouts_count": 2
+}
+```
+
+### Resetting Demo Data
+To reset to fresh demo data:
+
+```bash
+# Stop the server (Ctrl+C)
+# Delete the database file
+rm fitness_advisor.db
+
+# Restart the server - demo data will be recreated
+cargo run
+```
 
 ## Contributing
 
