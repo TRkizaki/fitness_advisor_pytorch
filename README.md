@@ -111,6 +111,12 @@ done
 
 #### Exercise-Specific Tests
 ```bash
+# Squat analysis test
+echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"squat"}' > squat_test.json
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @squat_test.json | jq
+
 # Pushup analysis test
 echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"pushup"}' > pushup_test.json
 curl -X POST http://localhost:3000/api/ai/analyze-form \
