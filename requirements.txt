@@ -1,0 +1,16 @@
+# Core ML dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+
+# MediaPipe for pose estimation
+mediapipe>=0.10.0
+
+# Computer vision and image processing
+opencv-python>=4.8.0
+pillow>=9.0.0
+
+# Numerical computing
+numpy>=1.24.0
+
+# For development and testing
+pytest>=7.0.0
