@@ -134,6 +134,76 @@ time curl -X POST http://localhost:3000/api/ai/analyze-form \
   -d @ai_test_request_fixed.json
 ```
 
+## API Response Examples
+
+### Motion Analysis Response
+```bash
+curl -X POST http://localhost:3000/api/ai/analyze-form \
+  -H "Content-Type: application/json" \
+  -d @ai_test_request_fixed.json
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "overall_score": 0.85,
+    "recommendations": [
+      "Good squat form detected!",
+      "Keep knees aligned over toes", 
+      "Maintain straight back posture"
+    ],
+    "detected_errors": [
+      "Minor knee cave detected"
+    ],
+    "confidence": 0.92
+  },
+  "message": "Success"
+}
+```
+
+### Other Endpoint Responses
+
+#### Health Check
+```bash
+curl http://localhost:3000/api/health
+```
+```json
+{
+  "success": true,
+  "data": "Fitness Advisor AI is healthy! 💪",
+  "message": "Success"
+}
+```
+
+#### GPU Status
+```bash
+curl http://localhost:3000/api/gpu-status
+```
+```json
+{
+  "success": true,
+  "data": {
+    "gpu_available": true,
+    "gpu_name": "NVIDIA GeForce RTX 5070 Laptop GPU",
+    "compute_capability": "12.0",
+    "vram_total_mb": 7716,
+    "vram_used_mb": 72,
+    "cuda_version": "12.4",
+    "ready_for_ai": true,
+    "features": [
+      "Real-time pose estimation",
+      "Form analysis", 
+      "Motion tracking",
+      "AI workout recommendations",
+      "Database-backed analytics"
+    ]
+  },
+  "message": "Success"
+}
+```
+
 ### Pretty JSON Output
 ```bash
 # Get formatted analysis results
