@@ -6,6 +6,8 @@ A Rust-based fitness application that combines real-time pose analysis with pers
 
 - **AI Motion Analysis**: Real-time pose estimation and exercise form scoring using MediaPipe
 - **Exercise Classification**: Automatically detects squats, pushups, planks, and other exercises
+- **Real-time Streaming**: WebSocket-based live video analysis with <50ms latency
+- **Batch Processing**: Analyze complete workout sessions (30-60 minutes) with fatigue detection
 - **Personalized Recommendations**: Workout plans based on fitness level and goals
 - **Progress Tracking**: Comprehensive analytics and workout history
 - **RESTful API**: Clean HTTP endpoints for all functionality
@@ -52,7 +54,8 @@ GET  /api/exercises           # List exercises
 
 ### AI & Analytics
 ```bash
-POST /api/ai/analyze-form     # AI motion analysis
+POST /api/ai/analyze-form     # AI motion analysis (single frame/video)
+GET  /api/ai/realtime         # WebSocket real-time streaming analysis
 GET  /api/users/:id/recommendations  # Get workout plan
 GET  /api/users/:id/progress  # Progress analytics
 POST /api/workouts            # Log workout session
@@ -140,6 +143,110 @@ time curl -X POST http://localhost:3000/api/ai/analyze-form \
   -d @ai_test_request_fixed.json
 ```
 
+## Real-time Streaming Analysis
+
+### WebSocket Connection
+Connect to the WebSocket endpoint for live video analysis with <50ms latency:
+
+```javascript
+// JavaScript WebSocket client
+const ws = new WebSocket('ws://localhost:3000/api/ai/realtime');
+
+ws.onopen = () => {
+    console.log('Connected to real-time analysis');
+};
+
+ws.onmessage = (event) => {
+    const analysis = JSON.parse(event.data);
+    if (analysis.type === 'analysis') {
+        console.log(`Score: ${analysis.score}, Exercise: ${analysis.exercise}`);
+        console.log(`Latency: ${analysis.total_latency_ms}ms`);
+    }
+};
+
+// Send frame data
+const sendFrame = (imageBase64) => {
+    ws.send(JSON.stringify({
+        frame_data: imageBase64,
+        timestamp: Date.now()
+    }));
+};
+```
+
+### Live Camera Demo
+```bash
+# Open the HTML test client
+python3 -m http.server 8080
+# Navigate to http://localhost:8080/test_realtime.html
+```
+
+### Performance Testing
+```bash
+# Test real-time analysis performance
+cargo run --bin test_realtime test_image.jpg
+
+# Expected output:
+# Frame 1: 42ms total, 38.2ms processing (Score: 85, Exercise: squat)
+# Average Latency: 41.3ms
+# Success Rate (<50ms): 100.0%
+# Real-time streaming: Excellent (30+ FPS capable)
+```
+
+## Batch Workout Analysis
+
+Analyze complete workout sessions (30-60 minutes) with automatic exercise detection and fatigue tracking.
+
+### Full Session Analysis
+```bash
+# Analyze entire workout video
+cargo run --bin batch_processor workout_session.mp4
+
+# Or use Python directly
+python3 batch_analyzer.py workout_video.mp4
+```
+
+### Batch Processing Features
+- **Exercise Segmentation**: Automatically identifies different exercises
+- **Rep Counting**: Counts repetitions for squats, pushups, planks
+- **Fatigue Detection**: Tracks form degradation over time
+- **Session Summary**: Complete workout breakdown with timing
+
+### Example Output
+```
+WORKOUT SESSION ANALYSIS
+========================
+Total Duration: 45.2 minutes
+Exercise Time: 32.1 minutes  
+Rest Time: 13.1 minutes
+Total Reps: 156
+
+Exercise Breakdown:
+  • squat: 45 reps
+  • pushup: 36 reps
+  • plank: 3 holds
+
+DETAILED ANALYSIS
+=================
+1. SQUAT (120.5s at 2.3s)
+   Reps: 45
+   Fatigue Score: 0.15
+   Fatigue Indicators:
+      • Minor form degradation detected
+
+2. PUSHUP (95.2s at 125.8s)  
+   Reps: 36
+   Fatigue Score: 0.32
+   Fatigue Indicators:
+      • Form degradation detected
+      • Increased movement instability
+```
+
+### Batch Test Script
+```bash
+# Test batch processing with comprehensive analysis
+./test_batch.sh workout_video.mp4
+```
+
 ## API Response Examples
 
 ### Motion Analysis Response
@@ -178,7 +285,7 @@ curl http://localhost:3000/api/health
 ```json
 {
   "success": true,
-  "data": "Fitness Advisor AI is healthy! 💪",
+  "data": "Fitness Advisor AI is healthy!",
   "message": "Success"
 }
 ```
@@ -216,10 +323,10 @@ curl http://localhost:3000/api/gpu-status
 curl -s http://localhost:3000/api/ai/analyze-form \
   -X POST -H "Content-Type: application/json" \
   -d @test_request.json | jq -r '
-"🎯 Form Analysis Results:
-📊 Score: \(.data.overall_score * 100)%
-✅ Recommendations: \(.data.recommendations | join(", "))
-⚠️  Issues: \(.data.detected_errors | join(", "))"'
+"Form Analysis Results:
+Score: \(.data.overall_score * 100)%
+Recommendations: \(.data.recommendations | join(", "))
+Issues: \(.data.detected_errors | join(", "))"'
 ```
 
 ### Create User
