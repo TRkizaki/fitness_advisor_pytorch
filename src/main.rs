@@ -9,9 +9,9 @@ use uuid::Uuid;
 
 // Web API imports
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, WebSocketUpgrade},
     http::StatusCode,
-    response::Json,
+    response::{Json, Response},
     routing::{get, post},
     Router,
 };
@@ -149,12 +149,14 @@ pub struct ProgressAnalysis {
 
 pub struct AIMotionAnalyzer {
     python_script_path: String,
+    realtime_script_path: String,
 }
 
 impl AIMotionAnalyzer {
     pub fn new() -> Self {
         Self {
             python_script_path: "ml_analyzer_test.py".to_string(),
+            realtime_script_path: "realtime_analyzer.py".to_string(),
         }
     }
 
@@ -230,6 +232,58 @@ impl AIMotionAnalyzer {
             let error_str = String::from_utf8(output.stderr).unwrap_or_default();
             warn!("❌ Python process failed with error: {}", error_str);
             Err(anyhow::anyhow!("Python analysis failed: {}", error_str))
+        }
+    }
+    
+    pub async fn analyze_frame_realtime(&self, frame_data: &[u8]) -> Result<serde_json::Value> {
+        use tokio::process::Command;
+        use tokio::io::AsyncWriteExt;
+        
+        // Encode frame data as base64
+        let frame_base64 = base64::prelude::Engine::encode(&base64::prelude::BASE64_STANDARD, frame_data);
+        
+        // Create JSON input for real-time analysis
+        let input_json = serde_json::json!({
+            "frame_data": frame_base64
+        });
+        
+        // Spawn Python real-time analyzer
+        let mut child = Command::new("python3")
+            .arg(&self.realtime_script_path)
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .map_err(|e| anyhow::anyhow!("Failed to spawn real-time analyzer: {}", e))?;
+
+        // Write input to Python process
+        if let Some(mut stdin) = child.stdin.take() {
+            let input_str = input_json.to_string();
+            stdin.write_all(input_str.as_bytes()).await
+                .map_err(|e| anyhow::anyhow!("Failed to write to analyzer: {}", e))?;
+            stdin.flush().await
+                .map_err(|e| anyhow::anyhow!("Failed to flush stdin: {}", e))?;
+        }
+
+        // Wait for process with shorter timeout for real-time
+        let output = tokio::time::timeout(
+            std::time::Duration::from_millis(100), // 100ms timeout for real-time
+            child.wait_with_output()
+        ).await
+        .map_err(|_| anyhow::anyhow!("Real-time analyzer timed out"))?
+        .map_err(|e| anyhow::anyhow!("Real-time analyzer failed: {}", e))?;
+
+        if output.status.success() {
+            let output_str = String::from_utf8(output.stdout)
+                .map_err(|e| anyhow::anyhow!("Invalid UTF-8 from analyzer: {}", e))?;
+            
+            let result: serde_json::Value = serde_json::from_str(&output_str)
+                .map_err(|e| anyhow::anyhow!("Failed to parse analyzer output: {}", e))?;
+            
+            Ok(result)
+        } else {
+            let error_str = String::from_utf8(output.stderr).unwrap_or_default();
+            Err(anyhow::anyhow!("Real-time analysis failed: {}", error_str))
         }
     }
 }
@@ -683,6 +737,149 @@ pub async fn gpu_status() -> Json<ApiResponse<GpuStatus>> {
     Json(ApiResponse::success(status))
 }
 
+// === Real-time WebSocket Analysis ===
+
+pub async fn websocket_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<AppState>>,
+) -> Response {
+    info!("🔗 WebSocket connection established for real-time analysis");
+    ws.on_upgrade(|socket| handle_socket(socket, state))
+}
+
+async fn handle_socket(socket: axum::extract::ws::WebSocket, state: Arc<AppState>) {
+    use axum::extract::ws::{Message, WebSocket};
+    use futures_util::{SinkExt, StreamExt};
+    
+    let (mut sender, mut receiver) = socket.split();
+    
+    info!("🎥 Real-time analysis session started");
+    
+    // Send welcome message
+    let welcome = serde_json::json!({
+        "type": "welcome",
+        "message": "Real-time analysis ready",
+        "target_latency_ms": 50
+    });
+    
+    if sender.send(Message::Text(welcome.to_string())).await.is_err() {
+        return;
+    }
+    
+    // Process incoming frames
+    while let Some(msg) = receiver.next().await {
+        match msg {
+            Ok(Message::Text(text)) => {
+                if let Err(e) = process_frame_message(&text, &state, &mut sender).await {
+                    warn!("Frame processing error: {}", e);
+                    let error_msg = serde_json::json!({
+                        "type": "error",
+                        "message": format!("Processing failed: {}", e)
+                    });
+                    let _ = sender.send(Message::Text(error_msg.to_string())).await;
+                }
+            }
+            Ok(Message::Binary(data)) => {
+                // Handle binary frame data directly
+                if let Err(e) = process_binary_frame(&data, &state, &mut sender).await {
+                    warn!("Binary frame processing error: {}", e);
+                }
+            }
+            Ok(Message::Close(_)) => {
+                info!("🔌 WebSocket connection closed");
+                break;
+            }
+            Ok(Message::Ping(data)) => {
+                let _ = sender.send(Message::Pong(data)).await;
+            }
+            Ok(Message::Pong(_)) => {
+                // Handle pong
+            }
+            Err(e) => {
+                warn!("WebSocket error: {}", e);
+                break;
+            }
+        }
+    }
+    
+    info!("🏁 Real-time analysis session ended");
+}
+
+async fn process_frame_message(
+    text: &str,
+    state: &Arc<AppState>,
+    sender: &mut futures_util::stream::SplitSink<axum::extract::ws::WebSocket, axum::extract::ws::Message>,
+) -> Result<()> {
+    use axum::extract::ws::Message;
+    use futures_util::SinkExt;
+    
+    let frame_start = std::time::Instant::now();
+    
+    // Parse JSON message
+    let request: serde_json::Value = serde_json::from_str(text)
+        .map_err(|e| anyhow::anyhow!("Invalid JSON: {}", e))?;
+    
+    // Extract frame data
+    let frame_base64 = request["frame_data"].as_str()
+        .ok_or_else(|| anyhow::anyhow!("No frame_data field"))?;
+    
+    // Decode frame data
+    let frame_data = base64::prelude::Engine::decode(&base64::prelude::BASE64_STANDARD, frame_base64)
+        .map_err(|e| anyhow::anyhow!("Base64 decode error: {}", e))?;
+    
+    // Analyze frame
+    let analysis_result = state.ai_analyzer.analyze_frame_realtime(&frame_data).await?;
+    
+    let total_latency = frame_start.elapsed().as_millis();
+    
+    // Prepare response
+    let mut response = analysis_result;
+    response["type"] = serde_json::Value::String("analysis".to_string());
+    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency));
+    response["timestamp"] = serde_json::Value::String(chrono::Utc::now().to_rfc3339());
+    
+    // Send response
+    sender.send(Message::Text(response.to_string())).await
+        .map_err(|e| anyhow::anyhow!("Failed to send response: {}", e))?;
+    
+    // Log performance
+    if total_latency > 50 {
+        warn!("⚠️ High latency: {}ms (target: <50ms)", total_latency);
+    } else {
+        info!("⚡ Analysis completed in {}ms", total_latency);
+    }
+    
+    Ok(())
+}
+
+async fn process_binary_frame(
+    data: &[u8],
+    state: &Arc<AppState>,
+    sender: &mut futures_util::stream::SplitSink<axum::extract::ws::WebSocket, axum::extract::ws::Message>,
+) -> Result<()> {
+    use axum::extract::ws::Message;
+    use futures_util::SinkExt;
+    
+    let frame_start = std::time::Instant::now();
+    
+    // Analyze binary frame data directly
+    let analysis_result = state.ai_analyzer.analyze_frame_realtime(data).await?;
+    
+    let total_latency = frame_start.elapsed().as_millis();
+    
+    // Prepare response
+    let mut response = analysis_result;
+    response["type"] = serde_json::Value::String("analysis".to_string());
+    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency));
+    response["timestamp"] = serde_json::Value::String(chrono::Utc::now().to_rfc3339());
+    
+    // Send response
+    sender.send(Message::Text(response.to_string())).await
+        .map_err(|e| anyhow::anyhow!("Failed to send response: {}", e))?;
+    
+    Ok(())
+}
+
 #[derive(Serialize)]
 pub struct GpuStatus {
     pub gpu_available: bool,
@@ -714,6 +911,7 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         
         // 🎯 AI機能（RTX 5070活用）
         .route("/api/ai/analyze-form", post(analyze_form))
+        .route("/api/ai/realtime", get(websocket_handler))
         
         // システム情報
         .route("/api/health", get(health_check))
