@@ -48,5 +48,11 @@ uuid = { version = "1.0", features = ["v4"] }
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
 
+# HTTP Client for ML service integration
+reqwest = { version = "0.11", features = ["json", "multipart"] }
+
+# Configuration management
+toml = "0.8"
+
 # Testing
 axum-test = "15.0"
