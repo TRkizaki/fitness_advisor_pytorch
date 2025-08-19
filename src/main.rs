@@ -1,6 +1,8 @@
 // src/main.rs - Main application with database integration
 
 mod database;
+mod ml_client;
+mod config;
 
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
@@ -21,6 +23,8 @@ use tracing::{info, warn};
 
 // Database imports
 use database::{DatabaseManager, DatabaseHealth};
+use ml_client::MLServiceClient;
+use config::Config;
 
 // === 基本データ構造 ===
 
@@ -532,6 +536,8 @@ pub struct AnalyzeFormRequest {
 pub struct AppState {
     pub advisor: Arc<FitnessAdvisor>,
     pub ai_analyzer: Arc<AIMotionAnalyzer>,
+    pub ml_client: Arc<MLServiceClient>,
+    pub config: Arc<Config>,
 }
 
 // API ハンドラー
@@ -909,9 +915,15 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         // ワークアウト管理
         .route("/api/workouts", post(log_workout))
         
-        // 🎯 AI機能（RTX 5070活用）
+        // AI機能（RTX 5070活用）
         .route("/api/ai/analyze-form", post(analyze_form))
         .route("/api/ai/realtime", get(websocket_handler))
+        
+        // ML service integration endpoints
+        .route("/api/ml/analyze-frame", post(ml_analyze_frame))
+        .route("/api/ml/analyze-video", post(ml_analyze_video))
+        .route("/api/ml/analyze-batch", post(ml_analyze_batch))
+        .route("/api/ml/status", get(ml_service_status))
         
         // システム情報
         .route("/api/health", get(health_check))
@@ -930,22 +942,41 @@ pub fn create_router(state: Arc<AppState>) -> Router {
 }
 
 // サーバー起動
-pub async fn start_server(advisor: FitnessAdvisor) -> anyhow::Result<()> {
+pub async fn start_server(advisor: FitnessAdvisor, config: Config) -> anyhow::Result<()> {
     // トレーシング初期化
     tracing_subscriber::fmt::init();
 
+    // Initialize ML service client
+    let ml_client = MLServiceClient::with_config(
+        config.ml_service.base_url.clone(),
+        config.ml_service.timeout_seconds
+    );
+    
+    // Check if ML service is available
+    info!("Checking ML service availability...");
+    if ml_client.is_available().await {
+        info!("ML service is available and ready");
+    } else {
+        warn!("ML service not available - starting without ML features");
+        warn!("To enable ML features, start the Python ML service:");
+        warn!("   python3 ml_service.py --host 127.0.0.1 --port 8001");
+    }
+    
     let state = Arc::new(AppState {
         advisor: Arc::new(advisor),
         ai_analyzer: Arc::new(AIMotionAnalyzer::new()),
+        ml_client: Arc::new(ml_client),
+        config: Arc::new(config.clone()),
     });
 
     let app = create_router(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
-    info!("🚀 Fitness Advisor AI Server starting on http://0.0.0.0:3000");
-    info!("💪 RTX 5070 Laptop GPU Ready for AI Processing");
-    info!("🗄️  SQLite Database Connected");
-    info!("📱 API Documentation:");
+    let bind_address = config.get_server_address();
+    let listener = tokio::net::TcpListener::bind(&bind_address).await?;
+    info!("Fitness Advisor AI Server starting on http://{}", bind_address);
+    info!("RTX 5070 Laptop GPU Ready for AI Processing");
+    info!("SQLite Database Connected");
+    info!("API Documentation:");
     info!("  POST   /api/users                          - Create user");
     info!("  GET    /api/users                          - Get all users");
     info!("  GET    /api/users/:id                      - Get specific user");
@@ -963,16 +994,119 @@ pub async fn start_server(advisor: FitnessAdvisor) -> anyhow::Result<()> {
     Ok(())
 }
 
+// ML service integration handlers
+pub async fn ml_analyze_frame(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<AnalyzeFrameRequest>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    match state.ml_client.analyze_frame_realtime(request.frame_base64).await {
+        Ok(response) => {
+            if response.success {
+                info!("ML frame analysis completed in {:.2}ms", response.processing_time_ms);
+                Ok(Json(ApiResponse::success(response.result)))
+            } else {
+                warn!("ML frame analysis failed: {:?}", response.error);
+                Ok(Json(ApiResponse::error(
+                    response.error.unwrap_or("Analysis failed".to_string())
+                )))
+            }
+        }
+        Err(e) => {
+            warn!("ML service request failed: {}", e);
+            Ok(Json(ApiResponse::error(format!("ML service unavailable: {}", e))))
+        }
+    }
+}
+
+pub async fn ml_analyze_video(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<AnalyzeVideoRequest>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    match state.ml_client.analyze_video(request.video_base64, "detailed").await {
+        Ok(response) => {
+            if response.success {
+                info!("ML video analysis completed in {:.2}ms", response.processing_time_ms);
+                Ok(Json(ApiResponse::success(response.result)))
+            } else {
+                warn!("ML video analysis failed: {:?}", response.error);
+                Ok(Json(ApiResponse::error(
+                    response.error.unwrap_or("Analysis failed".to_string())
+                )))
+            }
+        }
+        Err(e) => {
+            warn!("ML service request failed: {}", e);
+            Ok(Json(ApiResponse::error(format!("ML service unavailable: {}", e))))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MLBatchRequest {
+    pub video_path: String,
+}
+
+pub async fn ml_analyze_batch(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<MLBatchRequest>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    match state.ml_client.analyze_batch(request.video_path).await {
+        Ok(response) => {
+            if response.success {
+                info!("ML batch analysis completed in {:.2}ms", response.processing_time_ms);
+                Ok(Json(ApiResponse::success(response.result)))
+            } else {
+                warn!("ML batch analysis failed: {:?}", response.error);
+                Ok(Json(ApiResponse::error(
+                    response.error.unwrap_or("Analysis failed".to_string())
+                )))
+            }
+        }
+        Err(e) => {
+            warn!("ML service request failed: {}", e);
+            Ok(Json(ApiResponse::error(format!("ML service unavailable: {}", e))))
+        }
+    }
+}
+
+pub async fn ml_service_status(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    match state.ml_client.models_status().await {
+        Ok(status) => {
+            info!("ML service status retrieved successfully");
+            Ok(Json(ApiResponse::success(serde_json::to_value(status).unwrap())))
+        }
+        Err(e) => {
+            warn!("Failed to get ML service status: {}", e);
+            Ok(Json(ApiResponse::error(format!("ML service unavailable: {}", e))))
+        }
+    }
+}
+
 // === メイン実行 ===
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("🏋️  Fitness Advisor AI Starting...");
-    println!("🎯 RTX 5070 Laptop GPU - 7.7GB VRAM Ready!");
-    println!("🗄️  Initializing SQLite Database...");
+    println!("Fitness Advisor AI Starting...");
+    
+    // Load configuration
+    let config = Config::load_with_env().unwrap_or_else(|e| {
+        println!("Warning: Failed to load config file, using defaults: {}", e);
+        Config::default()
+    });
+    
+    // Validate configuration
+    if let Err(e) = config.validate() {
+        return Err(anyhow::anyhow!("Invalid configuration: {}", e));
+    }
+    
+    println!("Configuration loaded successfully");
+    println!("RTX 5070 Laptop GPU - 7.7GB VRAM Ready!");
+    println!("Initializing SQLite Database...");
     
     // データベース接続
-    let database_url = "sqlite:./fitness_advisor.db";
+    let database_url = &config.database.url;
     
     // Ensure we can create the database file
     if let Err(e) = std::fs::File::create("fitness_advisor.db") {
@@ -1071,13 +1205,13 @@ async fn main() -> anyhow::Result<()> {
 
     // データベースヘルスチェック
     let db_health = advisor.database_health().await?;
-    println!("✅ Database initialized successfully");
-    println!("👤 Users in database: {}", db_health.users_count);
-    println!("💪 Exercises in database: {}", db_health.exercises_count);
-    println!("📊 Workouts logged: {}", db_health.workouts_count);
+    println!("Database initialized successfully");
+    println!("Users in database: {}", db_health.users_count);
+    println!("Exercises in database: {}", db_health.exercises_count);
+    println!("Workouts logged: {}", db_health.workouts_count);
     
     // サーバー起動
-    start_server(advisor).await?;
+    start_server(advisor, config).await?;
     
     Ok(())
 }
