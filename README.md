@@ -1,155 +1,200 @@
 # Fitness Advisor AI
 
-A Rust-based fitness application that combines real-time pose analysis with personalized workout recommendations. Features a hybrid architecture with Python ML integration for advanced motion analysis.
+A high-performance fitness application with hybrid Rust/Python architecture, combining real-time pose analysis with personalized workout recommendations. Features advanced ML capabilities through MediaPipe and PyTorch integration.
 
-## Features
+## Architecture Overview
 
-- **AI Motion Analysis**: Real-time pose estimation and exercise form scoring using MediaPipe
-- **Exercise Classification**: Automatically detects squats, pushups, planks, and other exercises
-- **Real-time Streaming**: WebSocket-based live video analysis with <50ms latency
-- **Batch Processing**: Analyze complete workout sessions (30-60 minutes) with fatigue detection
-- **Personalized Recommendations**: Workout plans based on fitness level and goals
-- **Progress Tracking**: Comprehensive analytics and workout history
-- **RESTful API**: Clean HTTP endpoints for all functionality
-- **SQLite Database**: Persistent storage for users, exercises, and workout data
+```
+┌─────────────────────┐    HTTP/JSON    ┌───────────────────────┐
+│   Rust Core API     │◄──────────────►│  Python ML Service   │
+│ • WebSocket Handler │                 │ • FastAPI Server      │
+│ • Database          │                 │ • ML Models           │ 
+│ • Business Logic    │                 │ • MediaPipe/PyTorch   │
+│ • Real-time API     │                 │ • Form Analysis       │
+└─────────────────────┘                 └───────────────────────┘
+        Port 3000                              Port 8001
+```
+
+## Key Features
+
+### 🚀 **Performance & Architecture**
+- **Hybrid Design**: Rust for performance-critical operations, Python for ML processing
+- **Real-time Analysis**: <50ms latency pose estimation with WebSocket streaming
+- **Concurrent Processing**: High-throughput API with async Rust backend
+- **SQLite Integration**: Persistent storage with auto-migration
+
+### 🧠 **AI & Machine Learning**
+- **Pose Estimation**: MediaPipe-based real-time body tracking
+- **Exercise Classification**: Automatic detection of squats, pushups, planks, and more
+- **Form Analysis**: Real-time feedback on exercise technique and safety
+- **Batch Processing**: Complete workout session analysis (30-60 minutes)
+- **Progress Tracking**: ML-powered fitness analytics and recommendations
+
+### 📊 **Analytics & Tracking**
+- **Workout Recommendations**: Personalized plans based on fitness level and goals
+- **Rep Counting**: Automatic repetition tracking with fatigue detection
+- **Progress Analysis**: Comprehensive workout history and improvement metrics
+- **Health Monitoring**: BMR/TDEE calculations with macro nutrition guidance
 
 ## Quick Start
 
 ### Prerequisites
-- Rust (latest stable)
-- Python 3.8+
-- SQLite
+- **Rust** (latest stable)
+- **Python 3.8+** with pip
+- **SQLite**
+- **GPU** (optional, for accelerated ML processing)
 
-### Installation
+### Installation & Setup
 
-1. **Clone and build**:
+1. **Clone and prepare environment**:
    ```bash
    git clone <repository-url>
    cd fitness_advisor_ai
+   
+   # Install Python dependencies for ML features
+   pip install -r requirements.txt
+   
+   # Build Rust components
    cargo build --release
    ```
 
-2. **Install Python dependencies** (optional, for full ML features):
+2. **Start the hybrid system**:
    ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the server**:
-   ```bash
+   # Option 1: Use the startup script (recommended)
+   ./start_services.sh
+   
+   # Option 2: Start services manually
+   python3 ml_service.py --host 127.0.0.1 --port 8001 &
    cargo run
    ```
 
-The API server will start on `http://localhost:3000`
+3. **Verify integration**:
+   ```bash
+   # Run integration tests
+   python3 test_integration.py
+   
+   # Check service health
+   curl http://localhost:3000/api/health
+   curl http://localhost:8001/health
+   ```
+
+### Services Overview
+- **Rust API Server**: `http://localhost:3000` - Core application logic and database
+- **Python ML Service**: `http://localhost:8001` - Machine learning and computer vision
+- **API Documentation**: `http://localhost:8001/docs` - Interactive FastAPI docs
 
 ## API Endpoints
 
-### Core Endpoints
+### Core Application (Port 3000)
+
+#### User Management
 ```bash
-GET  /api/health              # Health check
-GET  /api/users               # List all users  
-POST /api/users               # Create new user
-GET  /api/users/:id           # Get user details
-GET  /api/exercises           # List exercises
+GET  /api/users                    # List all users  
+POST /api/users                    # Create new user
+GET  /api/users/:id                # Get user details
+GET  /api/users/:id/recommendations # Get personalized workout plan
+GET  /api/users/:id/progress       # Progress analytics
+GET  /api/users/:id/workouts       # Workout history
 ```
 
-### AI & Analytics
+#### Exercise & Workout Management
 ```bash
-POST /api/ai/analyze-form     # AI motion analysis (single frame/video)
-GET  /api/ai/realtime         # WebSocket real-time streaming analysis
-GET  /api/users/:id/recommendations  # Get workout plan
-GET  /api/users/:id/progress  # Progress analytics
-POST /api/workouts            # Log workout session
+GET  /api/exercises                # List available exercises
+POST /api/workouts                 # Log workout session
 ```
 
-### System
+#### ML Integration Endpoints
 ```bash
-GET  /api/gpu-status          # GPU information
-GET  /api/database/health     # Database status
+POST /api/ml/analyze-frame         # Single frame analysis
+POST /api/ml/analyze-video         # Detailed video analysis  
+POST /api/ml/analyze-batch         # Batch workout analysis
+GET  /api/ml/status                # ML service status
+```
+
+#### Real-time Features
+```bash
+GET  /api/ai/realtime              # WebSocket real-time streaming
+POST /api/ai/analyze-form          # Legacy AI analysis endpoint
+```
+
+#### System & Monitoring
+```bash
+GET  /api/health                   # Application health check
+GET  /api/database/health          # Database status
+GET  /api/gpu-status               # GPU information
+```
+
+### Python ML Service (Port 8001)
+
+```bash
+GET  /health                       # Service health check
+POST /analyze/frame                # Frame analysis (realtime/detailed)
+POST /analyze/video                # Video processing
+POST /analyze/batch                # Batch file processing
+GET  /models/status                # ML models status
+GET  /docs                         # Interactive API documentation
 ```
 
 ## Usage Examples
 
-### Test AI Motion Analysis
+### Real-time Frame Analysis
 
-#### Basic Test
 ```bash
-# Create test request with base64 video data
-echo '{"video_base64":"'$(base64 -w0 image.jpg)'"}' > test_request.json
-
-# Analyze form
-curl -X POST http://localhost:3000/api/ai/analyze-form \
+# Basic frame analysis
+curl -X POST http://localhost:3000/api/ml/analyze-frame \
   -H "Content-Type: application/json" \
-  -d @test_request.json | jq
+  -d '{
+    "frame_base64": "'$(base64 -w0 workout_image.jpg)'"
+  }' | jq
 ```
 
-#### Video Processing Workflow
-```bash
-# Complete workflow: MOV file → compression → base64 → API test
-ffmpeg -i input.mov -t 10 -vf scale=640:480 -c:v libx264 -crf 28 temp.mp4 && \
-base64 -w 0 temp.mp4 > video_b64.txt && \
-echo '{"video_base64":"'$(cat video_b64.txt)'","exercise_type":"squat"}' > video_test.json && \
-curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @video_test.json | jq
-
-# Alternative: Process image files
-ffmpeg -i workout_photo.jpg -vf scale=640:480 -q:v 2 processed.jpg && \
-base64 -w 0 processed.jpg > image_b64.txt && \
-echo '{"video_base64":"'$(cat image_b64.txt)'"}' > image_test.json && \
-curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @image_test.json | jq
-
-# Batch processing multiple files
-for file in *.mov; do
-  echo "Processing $file..."
-  ffmpeg -i "$file" -t 5 -vf scale=480:360 -c:v libx264 -crf 30 "processed_$file.mp4" && \
-  base64 -w 0 "processed_$file.mp4" > "${file%.mov}_b64.txt" && \
-  echo '{"video_base64":"'$(cat "${file%.mov}_b64.txt")'"}' > "${file%.mov}_test.json" && \
-  curl -s -X POST http://localhost:3000/api/ai/analyze-form \
-    -H "Content-Type: application/json" \
-    -d @"${file%.mov}_test.json" | jq '.data.overall_score'
-done
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "score": 85,
+    "exercise": "squat",
+    "feedback": ["Good squat depth!", "Keep knees aligned"],
+    "warnings": ["Minor form adjustment needed"],
+    "processing_time_ms": 42.3
+  }
+}
 ```
 
-#### Exercise-Specific Tests
+### Video Analysis
+
 ```bash
-# Squat analysis test
-echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"squat"}' > squat_test.json
-curl -X POST http://localhost:3000/api/ai/analyze-form \
+# Process workout video
+ffmpeg -i input.mov -t 10 -vf scale=640:480 -c:v libx264 -crf 28 temp.mp4
+curl -X POST http://localhost:3000/api/ml/analyze-video \
   -H "Content-Type: application/json" \
-  -d @squat_test.json | jq
-
-# Pushup analysis test
-echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"pushup"}' > pushup_test.json
-curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @pushup_test.json | jq
-
-# Plank analysis test  
-echo '{"video_base64":"'$(cat test_base64.txt)'","exercise_type":"plank"}' > plank_test.json
-curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @plank_test.json | jq
-
-# Debug mode with detailed information
-curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @ai_test_request_fixed.json | jq '.'
-
-# Measure response time
-time curl -X POST http://localhost:3000/api/ai/analyze-form \
-  -H "Content-Type: application/json" \
-  -d @ai_test_request_fixed.json
+  -d '{
+    "video_base64": "'$(base64 -w0 temp.mp4)'"
+  }' | jq
 ```
 
-## Real-time Streaming Analysis
+### Batch Workout Analysis
 
-### WebSocket Connection
-Connect to the WebSocket endpoint for live video analysis with <50ms latency:
+```bash
+# Analyze complete workout session
+curl -X POST http://localhost:3000/api/ml/analyze-batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "video_path": "/path/to/workout_session.mp4"
+  }' | jq
+```
 
+**Batch Analysis Features:**
+- **Exercise Segmentation**: Automatic identification of different exercises
+- **Rep Counting**: Precise repetition tracking for squats, pushups, planks
+- **Fatigue Detection**: Tracks form degradation over time
+- **Session Summary**: Complete workout breakdown with timing and performance metrics
+
+### Real-time Streaming Analysis
+
+#### WebSocket Connection
 ```javascript
-// JavaScript WebSocket client
 const ws = new WebSocket('ws://localhost:3000/api/ai/realtime');
 
 ws.onopen = () => {
@@ -159,12 +204,15 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
     const analysis = JSON.parse(event.data);
     if (analysis.type === 'analysis') {
-        console.log(`Score: ${analysis.score}, Exercise: ${analysis.exercise}`);
+        console.log(`Score: ${analysis.score}%, Exercise: ${analysis.exercise}`);
         console.log(`Latency: ${analysis.total_latency_ms}ms`);
+        
+        // Display real-time feedback
+        displayFeedback(analysis.feedback, analysis.warnings);
     }
 };
 
-// Send frame data
+// Send frame data from camera
 const sendFrame = (imageBase64) => {
     ws.send(JSON.stringify({
         frame_data: imageBase64,
@@ -173,325 +221,240 @@ const sendFrame = (imageBase64) => {
 };
 ```
 
-### Live Camera Demo
+#### Live Camera Demo
 ```bash
-# Open the HTML test client
+# Test with live camera feed
 python3 -m http.server 8080
 # Navigate to http://localhost:8080/test_realtime.html
 ```
 
-### Performance Testing
+### Exercise-Specific Analysis
+
 ```bash
-# Test real-time analysis performance
-cargo run --bin test_realtime test_image.jpg
-
-# Expected output:
-# Frame 1: 42ms total, 38.2ms processing (Score: 85, Exercise: squat)
-# Average Latency: 41.3ms
-# Success Rate (<50ms): 100.0%
-# Real-time streaming: Excellent (30+ FPS capable)
-```
-
-## Batch Workout Analysis
-
-Analyze complete workout sessions (30-60 minutes) with automatic exercise detection and fatigue tracking.
-
-### Full Session Analysis
-```bash
-# Analyze entire workout video
-cargo run --bin batch_processor workout_session.mp4
-
-# Or use Python directly
-python3 batch_analyzer.py workout_video.mp4
-```
-
-### Batch Processing Features
-- **Exercise Segmentation**: Automatically identifies different exercises
-- **Rep Counting**: Counts repetitions for squats, pushups, planks
-- **Fatigue Detection**: Tracks form degradation over time
-- **Session Summary**: Complete workout breakdown with timing
-
-### Example Output
-```
-WORKOUT SESSION ANALYSIS
-========================
-Total Duration: 45.2 minutes
-Exercise Time: 32.1 minutes  
-Rest Time: 13.1 minutes
-Total Reps: 156
-
-Exercise Breakdown:
-  • squat: 45 reps
-  • pushup: 36 reps
-  • plank: 3 holds
-
-DETAILED ANALYSIS
-=================
-1. SQUAT (120.5s at 2.3s)
-   Reps: 45
-   Fatigue Score: 0.15
-   Fatigue Indicators:
-      • Minor form degradation detected
-
-2. PUSHUP (95.2s at 125.8s)  
-   Reps: 36
-   Fatigue Score: 0.32
-   Fatigue Indicators:
-      • Form degradation detected
-      • Increased movement instability
-```
-
-### Batch Test Script
-```bash
-# Test batch processing with comprehensive analysis
-./test_batch.sh workout_video.mp4
-```
-
-## API Response Examples
-
-### Motion Analysis Response
-```bash
-curl -X POST http://localhost:3000/api/ai/analyze-form \
+# Squat form analysis
+echo '{"frame_base64":"'$(cat image_b64.txt)'","analysis_type":"detailed"}' > squat_test.json
+curl -X POST http://localhost:8001/analyze/frame \
   -H "Content-Type: application/json" \
-  -d @ai_test_request_fixed.json
-```
+  -d @squat_test.json | jq
 
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "overall_score": 0.85,
-    "recommendations": [
-      "Good squat form detected!",
-      "Keep knees aligned over toes", 
-      "Maintain straight back posture"
-    ],
-    "detected_errors": [
-      "Minor knee cave detected"
-    ],
-    "confidence": 0.92
-  },
-  "message": "Success"
-}
-```
-
-### Other Endpoint Responses
-
-#### Health Check
-```bash
-curl http://localhost:3000/api/health
-```
-```json
-{
-  "success": true,
-  "data": "Fitness Advisor AI is healthy!",
-  "message": "Success"
-}
-```
-
-#### GPU Status
-```bash
-curl http://localhost:3000/api/gpu-status
-```
-```json
-{
-  "success": true,
-  "data": {
-    "gpu_available": true,
-    "gpu_name": "NVIDIA GeForce RTX 5070 Laptop GPU",
-    "compute_capability": "12.0",
-    "vram_total_mb": 7716,
-    "vram_used_mb": 72,
-    "cuda_version": "12.4",
-    "ready_for_ai": true,
-    "features": [
-      "Real-time pose estimation",
-      "Form analysis", 
-      "Motion tracking",
-      "AI workout recommendations",
-      "Database-backed analytics"
-    ]
-  },
-  "message": "Success"
-}
-```
-
-### Pretty JSON Output
-```bash
-# Get formatted analysis results
-curl -s http://localhost:3000/api/ai/analyze-form \
-  -X POST -H "Content-Type: application/json" \
-  -d @test_request.json | jq -r '
-"Form Analysis Results:
-Score: \(.data.overall_score * 100)%
-Recommendations: \(.data.recommendations | join(", "))
-Issues: \(.data.detected_errors | join(", "))"'
-```
-
-### Create User
-```bash
-curl -X POST http://localhost:3000/api/users \
+# Performance measurement
+time curl -X POST http://localhost:3000/api/ml/analyze-frame \
   -H "Content-Type: application/json" \
-  -d '{
-    "user": {
-      "id": "user123",
-      "name": "John Doe", 
-      "age": 30,
-      "height": 175.0,
-      "weight": 70.0,
-      "fitness_level": "Intermediate",
-      "goals": ["Strength", "GeneralHealth"],
-      "preferences": {
-        "preferred_exercise_types": ["Strength"],
-        "available_equipment": ["None", "Dumbbells"],
-        "workout_duration_minutes": 45,
-        "workouts_per_week": 3,
-        "preferred_time_of_day": "evening"
-      }
-    }
-  }'
+  -d @test_request.json
 ```
-
-## Architecture
-
-### Hybrid Design
-- **Rust Backend**: High-performance API server with SQLite integration
-- **Python ML**: Subprocess-based motion analysis using MediaPipe and PyTorch
-- **JSON Communication**: Clean data exchange between Rust and Python components
-
-### Performance
-- **~21ms**: Average ML analysis time
-- **Async Processing**: Non-blocking Python subprocess execution  
-- **GPU Ready**: RTX 5070 acceleration support
-
-## Development
-
-### Run Tests
-```bash
-# Integration test
-cargo run --bin test_integration
-
-# Performance benchmark  
-cargo run --bin benchmark
-```
-
-### Database
-- Auto-creates SQLite database on first run
-- Seeds with demo users and exercises
-- Tables auto-migrate on startup
-
-### Python ML Components
-- `ml_analyzer.py`: Full MediaPipe implementation
-- `ml_analyzer_test.py`: Lightweight test version
-- `requirements.txt`: Python dependencies
 
 ## Configuration
 
 ### Environment Variables
 ```bash
-RUST_LOG=info          # Enable logging
-DATABASE_URL=sqlite:./fitness_advisor.db  # Database path
+# Core application
+FITNESS_CONFIG_PATH=config/default.toml
+FITNESS_SERVER_HOST=0.0.0.0
+FITNESS_SERVER_PORT=3000
+FITNESS_DATABASE_URL=sqlite:./fitness_advisor.db
+
+# ML service integration  
+FITNESS_ML_SERVICE_URL=http://127.0.0.1:8001
+FITNESS_ML_TIMEOUT_SECONDS=30
+
+# Logging
+FITNESS_LOG_LEVEL=info
+RUST_LOG=info
 ```
 
-## Using Default Data
+### Configuration File (config/default.toml)
+```toml
+[server]
+host = "0.0.0.0"
+port = 3000
 
-The application automatically seeds the database with demo data on first run, perfect for testing and exploration.
+[ml_service]
+base_url = "http://127.0.0.1:8001"
+timeout_seconds = 30
+retry_attempts = 3
 
-### Demo Users
-Three users with different fitness levels are pre-created:
+[ai_analysis.form_thresholds.squat]
+knee_angle_min = 70
+knee_angle_max = 120
+back_straightness = 0.15
 
+[fitness.macro_ratios.muscle_gain]
+protein = 0.30
+fat = 0.25
+carbs = 0.45
+```
+
+## Performance Characteristics
+
+### Real-time Analysis
+- **Target Latency**: <50ms per frame
+- **Processing Speed**: 20-30 FPS capable
+- **Model**: MediaPipe Lite for speed optimization
+- **Use Case**: Live video streaming, real-time feedback
+
+### Detailed Analysis  
+- **Processing Time**: 100-500ms per frame
+- **Model**: Full MediaPipe + PyTorch integration
+- **Features**: Comprehensive form analysis, exercise classification
+- **Use Case**: Post-workout analysis, detailed feedback
+
+### Batch Processing
+- **Session Length**: 30-60 minute videos supported
+- **Processing**: Background processing with progress tracking
+- **Features**: Exercise segmentation, fatigue analysis, rep counting
+- **Use Case**: Complete workout session analytics
+
+## Default Demo Data
+
+The application automatically seeds the database with demo data on first run:
+
+### Pre-created Users
 ```bash
-# Get all demo users
+# View demo users
 curl -s http://localhost:3000/api/users | jq '.data[] | {id, name, fitness_level}'
 ```
 
-**Available Users:**
-- `demo_user` - Intermediate level (28 years old, 175cm, 70kg)
-- `beginner_user` - Beginner level (25 years old, 165cm, 60kg)  
-- `advanced_user` - Advanced level (35 years old, 180cm, 80kg)
+- **demo_user**: Intermediate (28 years, 175cm, 70kg)
+- **beginner_user**: Beginner (25 years, 165cm, 60kg)  
+- **advanced_user**: Advanced (35 years, 180cm, 80kg)
 
 ### Pre-loaded Exercises
-Five exercises are automatically added to the database:
-
 ```bash
-# View all exercises
-curl -s http://localhost:3000/api/exercises | jq '.data[] | {id, name, difficulty_level, exercise_type}'
+# View exercises
+curl -s http://localhost:3000/api/exercises | jq '.data[] | {id, name, difficulty_level}'
 ```
 
-**Available Exercises:**
-- `squat` - Bodyweight squat (difficulty: 2)
-- `pushup` - Classic push-up (difficulty: 3)
-- `plank` - Core plank hold (difficulty: 3)
-- `burpee` - Full-body burpee (difficulty: 8)
-- `deadlift` - Barbell deadlift (difficulty: 7)
+- **squat**: Bodyweight squat (difficulty: 2)
+- **pushup**: Classic push-up (difficulty: 3)
+- **plank**: Core plank hold (difficulty: 3)
+- **burpee**: Full-body burpee (difficulty: 8)
+- **deadlift**: Barbell deadlift (difficulty: 7)
 
-### Sample Workout Data
-Demo workout sessions are pre-logged for `demo_user`:
-
+### Sample Usage with Demo Data
 ```bash
-# Get user's workout history
-curl -s http://localhost:3000/api/users/demo_user/workouts | jq '.data[] | {date, total_duration_minutes, calories_burned, user_rating}'
+# Get personalized recommendations
+curl -s http://localhost:3000/api/users/demo_user/recommendations | jq
 
-# Get user's progress analysis
-curl -s http://localhost:3000/api/users/demo_user/progress | jq '.data'
+# View workout history  
+curl -s http://localhost:3000/api/users/demo_user/workouts | jq
+
+# Check database status
+curl -s http://localhost:3000/api/database/health | jq
 ```
 
-### Testing with Demo Data
+## Development & Testing
 
-#### Get Personalized Recommendations
+### Run Tests
 ```bash
-# Beginner workout plan
-curl -s http://localhost:3000/api/users/beginner_user/recommendations | jq '.data'
+# Integration tests (recommended)
+python3 test_integration.py
 
-# Intermediate workout plan  
-curl -s http://localhost:3000/api/users/demo_user/recommendations | jq '.data'
+# Rust unit tests
+cargo test
 
-# Advanced workout plan
-curl -s http://localhost:3000/api/users/advanced_user/recommendations | jq '.data'
+# Performance benchmarks
+cargo run --bin benchmark
 ```
 
-#### View Exercise Details
+### Development Mode
 ```bash
-# Get specific exercise information
-curl -s http://localhost:3000/api/exercises | jq '.data[] | select(.id=="squat")'
+# Auto-reload Rust server
+cargo watch -x run
 
-# Get exercise instructions and safety tips
-curl -s http://localhost:3000/api/exercises | jq '.data[] | select(.id=="pushup") | {instructions, safety_tips}'
+# Auto-reload Python ML service
+uvicorn ml_service:app --reload --host 127.0.0.1 --port 8001
 ```
 
-#### Database Health Check
+### Logs & Monitoring
 ```bash
-# See how much demo data is loaded
-curl -s http://localhost:3000/api/database/health | jq '.data'
+# View service logs
+tail -f logs/rust_server.log
+tail -f logs/ml_service.log
+
+# Monitor ML service performance
+curl http://localhost:8001/models/status | jq
 ```
 
-**Expected Output:**
-```json
-{
-  "connected": true,
-  "users_count": 3,
-  "exercises_count": 5, 
-  "workouts_count": 2
-}
-```
+## Performance Optimization
 
-### Resetting Demo Data
-To reset to fresh demo data:
+### GPU Acceleration
+- **CUDA Support**: Automatic GPU detection for PyTorch operations
+- **MediaPipe GPU**: Hardware-accelerated pose estimation
+- **Memory Management**: Efficient GPU memory usage
 
-```bash
-# Stop the server (Ctrl+C)
-# Delete the database file
-rm fitness_advisor.db
+### System Requirements
+- **Minimum**: 4GB RAM, 2-core CPU
+- **Recommended**: 8GB+ RAM, 4+ core CPU, GPU with 4GB+ VRAM
+- **Optimal**: 16GB+ RAM, 8+ core CPU, RTX 4060+ or equivalent
 
-# Restart the server - demo data will be recreated
-cargo run
-```
+## Troubleshooting
+
+### Common Issues
+
+1. **ML Service Not Available**
+   ```bash
+   # Check if Python service is running
+   curl http://localhost:8001/health
+   
+   # Verify dependencies
+   pip install -r requirements.txt
+   
+   # Check logs
+   tail logs/ml_service.log
+   ```
+
+2. **High Latency Issues**  
+   ```bash
+   # Check GPU availability
+   curl http://localhost:3000/api/gpu-status
+   
+   # Monitor processing times
+   curl http://localhost:8001/models/status
+   ```
+
+3. **Database Connection Issues**
+   ```bash
+   # Check database health
+   curl http://localhost:3000/api/database/health
+   
+   # Reset database (if needed)
+   rm fitness_advisor.db && cargo run
+   ```
+
+### Performance Tuning
+- Adjust MediaPipe model complexity in `ml_analyzer.py`
+- Configure batch processing sample rates in `config/default.toml`
+- Tune WebSocket frame rates for real-time analysis
+- Optimize image preprocessing pipeline
 
 ## Contributing
 
-The codebase follows standard Rust conventions. Key files:
-- `src/main.rs` - Main application logic and API handlers
-- `src/database.rs` - SQLite integration and data models
-- `ml_analyzer.py` - Python ML analysis engine
+### Project Structure
+```
+fitness_advisor/
+├── src/
+│   ├── main.rs              # Main Rust application
+│   ├── ml_client.rs         # ML service HTTP client
+│   ├── config.rs            # Configuration management
+│   └── database.rs          # Database operations
+├── config/default.toml      # Application configuration
+├── ml_service.py            # Python FastAPI ML service
+├── requirements.txt         # Python dependencies
+├── start_services.sh        # Service startup script
+└── test_integration.py      # Integration test suite
+```
 
+### Development Guidelines
+- Follow Rust conventions and use `cargo fmt`
+- Python code follows PEP 8 standards
+- Add tests for new features
+- Update configuration schema when adding new settings
+- Document API changes in both README and code
+
+## License
+
+This project is built for fitness and health applications. Please ensure compliance with applicable data privacy regulations when handling user fitness data.
+
+---
+
+**Ready to get started?** Run `./start_services.sh` and visit `http://localhost:3000/api/health` to verify your installation!
