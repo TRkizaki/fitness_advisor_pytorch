@@ -54,30 +54,30 @@
 
   Option A: Use the HTML Test Client
 
-  # Start the server
+  // Start the server
   cargo run
 
-  # In another terminal, serve the test page
+  // In another terminal, serve the test page
   python3 -m http.server 8080
 
-  # Open browser to http://localhost:8080/test_realtime.html
-  # Click "Start Camera" → "Connect WebSocket"
+  // Open browser to http://localhost:8080/test_realtime.html
+  // Click "Start Camera" → "Connect WebSocket"
 
   Option B: Command Line Testing
 
-  # Install wscat for testing
+  // Install wscat for testing
   npm install -g wscat
 
-  # Connect to WebSocket
+  // Connect to WebSocket
   wscat -c ws://localhost:3000/api/ai/realtime
 
-  # Send test message
+  // Send test message
   {"frame_data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==","timestam
   p":1234567890}
 
   Option C: Performance Testing
 
-  # Test with an image
+  // Test with an image
   cargo run --bin test_realtime test_image.jpg
 
   5. Message Formats
@@ -169,4 +169,11 @@
   2. Quality vs Speed: Use JPEG compression (0.7-0.8 quality)
   3. Connection Management: Handle reconnections gracefully
   4. Buffering: Avoid sending frames if previous analysis isn't complete
+
+  10. Related Features
+
+  For analyzing complete workout sessions (vs real-time analysis), see [batch_process.md](batch_process.md) which provides:
+  - Exercise segmentation and rep counting for full sessions
+  - Fatigue detection over time
+  - Complete workout breakdowns and summaries
 
