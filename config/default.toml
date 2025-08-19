@@ -1,0 +1,81 @@
+# Fitness Advisor AI Configuration
+
+[server]
+host = "0.0.0.0"
+port = 3000
+cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+[database]
+url = "sqlite:./fitness_advisor.db"
+max_connections = 10
+connection_timeout_seconds = 30
+
+[ml_service]
+base_url = "http://127.0.0.1:8001"
+timeout_seconds = 30
+retry_attempts = 3
+health_check_interval_seconds = 60
+
+[ml_service.endpoints]
+health = "/health"
+analyze_frame = "/analyze/frame"
+analyze_video = "/analyze/video"
+analyze_batch = "/analyze/batch"
+models_status = "/models/status"
+
+[logging]
+level = "info"
+format = "json"
+file_enabled = true
+file_path = "./logs/fitness_advisor.log"
+
+[ai_analysis]
+# Real-time analysis settings
+realtime_max_latency_ms = 50
+realtime_confidence_threshold = 0.7
+
+# Batch analysis settings
+batch_sample_rate = 30  # Every nth frame
+batch_timeout_minutes = 5
+
+# Form analysis thresholds
+[ai_analysis.form_thresholds.squat]
+knee_angle_min = 70
+knee_angle_max = 120
+back_straightness = 0.15
+hip_knee_alignment = 0.1
+
+[ai_analysis.form_thresholds.pushup]
+arm_angle_min = 45
+arm_angle_max = 90
+body_straightness = 0.1
+shoulder_stability = 0.05
+
+[ai_analysis.form_thresholds.plank]
+body_straightness = 0.08
+hip_position = 0.1
+shoulder_alignment = 0.05
+
+[fitness]
+# Default user preferences
+default_workout_duration_minutes = 45
+default_workouts_per_week = 3
+
+# Caloric calculations
+bmr_multipliers = { sedentary = 1.2, lightly_active = 1.375, moderately_active = 1.55, very_active = 1.725, extra_active = 1.9 }
+
+# Macro ratios by goal
+[fitness.macro_ratios.muscle_gain]
+protein = 0.30
+fat = 0.25
+carbs = 0.45
+
+[fitness.macro_ratios.weight_loss]
+protein = 0.40
+fat = 0.30
+carbs = 0.30
+
+[fitness.macro_ratios.maintenance]
+protein = 0.30
+fat = 0.30
+carbs = 0.40
