@@ -1,10 +1,10 @@
  🔧 How WebSocket Works in the Project
 
-  1. Architecture Overview
-
+### 1. Architecture Overview
+  
   Client (Browser/App) ←→ WebSocket ←→ Rust Server ←→ Python ML Analyzer
 
-  2. Server Side (Rust)
+###  2. Server Side (Rust)
 
   The WebSocket endpoint is available at:
   ws://localhost:3000/api/ai/realtime
@@ -15,11 +15,12 @@
   3. Python analyzes frame and returns JSON
   4. Rust sends analysis results back to client
 
-  3. Client Side Usage
+###  3. Client Side Usage
 
   Basic JavaScript WebSocket Client:
 
   // Connect to WebSocket
+```
   const ws = new WebSocket('ws://localhost:3000/api/ai/realtime');
 
   ws.onopen = () => {
@@ -40,8 +41,9 @@
           console.log(`Feedback: ${data.feedback.join(', ')}`);
       }
   };
-
+```
   // Send frame data
+```
   function sendFrame(imageBase64) {
       const message = {
           frame_data: imageBase64,
@@ -49,52 +51,63 @@
       };
       ws.send(JSON.stringify(message));
   }
+```
 
-  4. Testing the WebSocket
+###  4. Testing the WebSocket
 
-  Option A: Use the HTML Test Client
+####  Option A: Use the HTML Test Client
 
   // Start the server
+```
   cargo run
+```
 
   // In another terminal, serve the test page
+```
   python3 -m http.server 8080
+```
 
   // Open browser to http://localhost:8080/test_realtime.html
   // Click "Start Camera" → "Connect WebSocket"
 
-  Option B: Command Line Testing
+####  Option B: Command Line Testing
 
   // Install wscat for testing
+```
   npm install -g wscat
-
+```
   // Connect to WebSocket
+```
   wscat -c ws://localhost:3000/api/ai/realtime
-
+```
   // Send test message
+```
   {"frame_data":"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==","timestam
   p":1234567890}
+```
 
-  Option C: Performance Testing
+####  Option C: Performance Testing
 
   // Test with an image
+```
   cargo run --bin test_realtime test_image.jpg
+```
 
-  5. Message Formats
+###  5. Message Formats
 
   Client → Server (JSON):
-
+```
   {
       "frame_data": "base64_encoded_image_data",
       "timestamp": 1234567890
   }
-
+```
   Client → Server (Binary):
 
   You can also send raw image bytes directly as binary WebSocket message.
 
   Server → Client Response:
-
+```
   {
       "type": "analysis",
       "success": true,
@@ -111,12 +124,13 @@
           "within_target": true
       }
   }
-
-  6. Live Camera Integration
+```
+###  6. Live Camera Integration
 
   HTML5 Camera Capture:
 
   // Get camera stream
+```
   const video = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
@@ -144,16 +158,16 @@
       // Schedule next frame
       setTimeout(captureAndSend, 33); // ~30 FPS
   }
-
-  7. Performance Monitoring
+```
+###  7. Performance Monitoring
 
   The WebSocket provides real-time performance metrics:
   - Processing time: Python ML analysis time
   - Total latency: End-to-end frame processing
   - Target achievement: Whether <50ms target is met
 
-  8. Error Handling
-
+###  8. Error Handling
+```
   ws.onerror = (error) => {
       console.error('WebSocket error:', error);
   };
@@ -162,15 +176,15 @@
       console.log('Connection closed:', event.code, event.reason);
       // Implement reconnection logic if needed
   };
-
-  9. Production Considerations
+```
+###  9. Production Considerations
 
   1. Frame Rate Control: Limit to 15-30 FPS to avoid overloading
   2. Quality vs Speed: Use JPEG compression (0.7-0.8 quality)
   3. Connection Management: Handle reconnections gracefully
   4. Buffering: Avoid sending frames if previous analysis isn't complete
 
-  10. Related Features
+###  10. Related Features
 
   For analyzing complete workout sessions (vs real-time analysis), see [batch_process.md](batch_process.md) which provides:
   - Exercise segmentation and rep counting for full sessions
