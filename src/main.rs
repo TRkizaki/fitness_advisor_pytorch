@@ -3,6 +3,10 @@
 mod database;
 mod ml_client;
 mod config;
+mod core;
+mod models;
+mod advisors;
+mod sample_data;
 
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
@@ -25,6 +29,7 @@ use tracing::{info, warn};
 use database::{DatabaseManager, DatabaseHealth};
 use ml_client::MLServiceClient;
 use config::Config;
+use advisors::{MenuOptimizer, menu_optimizer::DataLoader};
 
 // === 基本データ構造 ===
 
@@ -48,7 +53,7 @@ pub enum FitnessLevel {
     Elite,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FitnessGoal {
     WeightLoss,
     MuscleGain,
@@ -532,11 +537,22 @@ pub struct AnalyzeFormRequest {
     pub video_base64: String, // Base64エンコードされた動画データ
 }
 
+#[derive(Deserialize)]
+pub struct AnalyzeFrameRequest {
+    pub frame_base64: String, // Base64エンコードされたフレームデータ
+}
+
+#[derive(Deserialize)]
+pub struct AnalyzeVideoRequest {
+    pub video_base64: String, // Base64エンコードされた動画データ
+}
+
 // アプリケーション状態
 pub struct AppState {
     pub advisor: Arc<FitnessAdvisor>,
     pub ai_analyzer: Arc<AIMotionAnalyzer>,
     pub ml_client: Arc<MLServiceClient>,
+    pub menu_optimizer: Arc<MenuOptimizer>,
     pub config: Arc<Config>,
 }
 
@@ -841,7 +857,7 @@ async fn process_frame_message(
     // Prepare response
     let mut response = analysis_result;
     response["type"] = serde_json::Value::String("analysis".to_string());
-    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency));
+    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency as u64));
     response["timestamp"] = serde_json::Value::String(chrono::Utc::now().to_rfc3339());
     
     // Send response
@@ -876,7 +892,7 @@ async fn process_binary_frame(
     // Prepare response
     let mut response = analysis_result;
     response["type"] = serde_json::Value::String("analysis".to_string());
-    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency));
+    response["total_latency_ms"] = serde_json::Value::Number(serde_json::Number::from(total_latency as u64));
     response["timestamp"] = serde_json::Value::String(chrono::Utc::now().to_rfc3339());
     
     // Send response
@@ -925,6 +941,11 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .route("/api/ml/analyze-batch", post(ml_analyze_batch))
         .route("/api/ml/status", get(ml_service_status))
         
+        // Menu optimization endpoints
+        .route("/api/menu/optimize", post(optimize_meal_plan))
+        .route("/api/menu/status", get(menu_optimizer_status))
+        .route("/api/menu/recommendations/:user_id", get(get_menu_recommendations))
+        
         // システム情報
         .route("/api/health", get(health_check))
         .route("/api/database/health", get(database_health))
@@ -962,10 +983,28 @@ pub async fn start_server(advisor: FitnessAdvisor, config: Config) -> anyhow::Re
         warn!("   python3 ml_service.py --host 127.0.0.1 --port 8001");
     }
     
+    // Initialize menu optimizer with sample data
+    info!("Initializing menu optimizer with sample data...");
+    let menu_optimizer = match DataLoader::load_sample_data().await {
+        Ok(optimizer) => {
+            let (food_count, recipe_count) = (
+                optimizer.get_food_count().await,
+                optimizer.get_recipe_count().await
+            );
+            info!("Menu optimizer loaded with {} foods and {} recipes", food_count, recipe_count);
+            optimizer
+        }
+        Err(e) => {
+            warn!("Failed to load sample data, using empty optimizer: {}", e);
+            MenuOptimizer::new()
+        }
+    };
+    
     let state = Arc::new(AppState {
         advisor: Arc::new(advisor),
         ai_analyzer: Arc::new(AIMotionAnalyzer::new()),
         ml_client: Arc::new(ml_client),
+        menu_optimizer: Arc::new(menu_optimizer),
         config: Arc::new(config.clone()),
     });
 
@@ -1080,6 +1119,144 @@ pub async fn ml_service_status(
         Err(e) => {
             warn!("Failed to get ML service status: {}", e);
             Ok(Json(ApiResponse::error(format!("ML service unavailable: {}", e))))
+        }
+    }
+}
+
+// Menu optimization handlers
+#[derive(Debug, Deserialize)]
+pub struct OptimizeMealPlanRequest {
+    pub user_id: String,
+    pub goals: Vec<FitnessGoal>,
+    pub time_horizon_days: u32,
+    pub preferences: Option<models::optimization::UserPreferences>,
+    pub objectives: Option<Vec<models::optimization::OptimizationObjective>>,
+}
+
+pub async fn optimize_meal_plan(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<OptimizeMealPlanRequest>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    // Get user from database
+    let user_result = state.advisor.get_user(&request.user_id).await;
+    let user = match user_result {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            warn!("User not found for meal plan optimization: {}", request.user_id);
+            return Ok(Json(ApiResponse::error("User not found".to_string())));
+        }
+        Err(e) => {
+            warn!("Failed to get user {}: {}", request.user_id, e);
+            return Ok(Json(ApiResponse::error(format!("Database error: {}", e))));
+        }
+    };
+
+    // Generate nutrition constraints based on user and goals
+    let constraints = match state.menu_optimizer.generate_nutrition_constraints(&user, &request.goals).await {
+        Ok(constraints) => constraints,
+        Err(e) => {
+            warn!("Failed to generate nutrition constraints for user {}: {}", request.user_id, e);
+            return Ok(Json(ApiResponse::error(format!("Constraint generation failed: {}", e))));
+        }
+    };
+
+    // Create default preferences if not provided
+    let preferences = request.preferences.unwrap_or_else(|| models::optimization::UserPreferences {
+        dietary_restrictions: vec![],
+        allergens_to_avoid: vec![],
+        cuisine_preferences: vec!["American".to_string(), "Italian".to_string()],
+        disliked_foods: vec![],
+        preferred_foods: vec![],
+        taste_preferences: models::optimization::TastePreferences {
+            sweetness_preference: 0.0,
+            saltiness_preference: 0.0,
+            sourness_preference: 0.0,
+            bitterness_preference: 0.0,
+            umami_preference: 0.0,
+            spiciness_preference: 0.0,
+            spice_tolerance: 0.5,
+        },
+        cooking_skill_level: models::optimization::CookingSkillLevel::Intermediate,
+        equipment_available: vec![
+            models::optimization::CookingEquipment::Stovetop,
+            models::optimization::CookingEquipment::Oven,
+            models::optimization::CookingEquipment::Microwave,
+        ],
+        meal_variety_importance: 0.7,
+        cost_importance: 0.5,
+        health_importance: 0.8,
+        convenience_importance: 0.6,
+    });
+
+    // Default objectives if not provided
+    let objectives = request.objectives.unwrap_or_else(|| vec![
+        models::optimization::OptimizationObjective::MaximizeNutrition,
+        models::optimization::OptimizationObjective::MaximizeTasteScore,
+        models::optimization::OptimizationObjective::BalanceMacros,
+        models::optimization::OptimizationObjective::MaximizeVariety,
+    ]);
+
+    // Create optimization request
+    let opt_request = models::optimization::OptimizationRequest {
+        user_id: request.user_id.clone(),
+        constraints,
+        preferences,
+        objectives,
+        time_horizon_days: request.time_horizon_days,
+        algorithm_config: models::optimization::AlgorithmConfig::default(),
+    };
+
+    // Run optimization
+    match state.menu_optimizer.optimize_meal_plan(opt_request).await {
+        Ok(solution) => {
+            info!("Menu optimization completed for user {}", request.user_id);
+            Ok(Json(ApiResponse::success(serde_json::to_value(solution).unwrap())))
+        }
+        Err(e) => {
+            warn!("Menu optimization failed for user {}: {}", request.user_id, e);
+            Ok(Json(ApiResponse::error(format!("Optimization failed: {}", e))))
+        }
+    }
+}
+
+pub async fn menu_optimizer_status(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, StatusCode> {
+    let metrics = state.menu_optimizer.get_metrics().await;
+    let (cache_size, hit_rate) = state.menu_optimizer.get_cache_stats().await;
+    
+    let recipe_count = state.menu_optimizer.get_recipe_count().await;
+    let food_count = state.menu_optimizer.get_food_count().await;
+
+    let status = serde_json::json!({
+        "service": "Menu Optimizer",
+        "status": "healthy",
+        "metrics": metrics,
+        "cache": {
+            "size": cache_size,
+            "hit_rate": hit_rate
+        },
+        "data": {
+            "recipes": recipe_count,
+            "foods": food_count
+        }
+    });
+
+    Ok(Json(ApiResponse::success(status)))
+}
+
+pub async fn get_menu_recommendations(
+    Path(user_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<ApiResponse<Vec<String>>>, StatusCode> {
+    match state.menu_optimizer.get_optimization_recommendations(&user_id).await {
+        Ok(recommendations) => {
+            info!("Retrieved menu recommendations for user {}", user_id);
+            Ok(Json(ApiResponse::success(recommendations)))
+        }
+        Err(e) => {
+            warn!("Failed to get menu recommendations for user {}: {}", user_id, e);
+            Ok(Json(ApiResponse::error(format!("Failed to get recommendations: {}", e))))
         }
     }
 }

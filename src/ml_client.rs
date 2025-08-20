@@ -47,7 +47,7 @@ pub struct HealthResponse {
     pub models_loaded: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ModelsStatusResponse {
     pub motion_analyzer: bool,
     pub realtime_analyzer: bool,
@@ -151,8 +151,9 @@ impl MLServiceClient {
                 .map_err(|e| anyhow!("Failed to parse frame analysis response: {}", e))?;
             Ok(result)
         } else {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!("Frame analysis failed with status {}: {}", response.status(), error_text))
+            Err(anyhow!("Frame analysis failed with status {}: {}", status, error_text))
         }
     }
 
@@ -177,8 +178,9 @@ impl MLServiceClient {
                 .map_err(|e| anyhow!("Failed to parse video analysis response: {}", e))?;
             Ok(result)
         } else {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!("Video analysis failed with status {}: {}", response.status(), error_text))
+            Err(anyhow!("Video analysis failed with status {}: {}", status, error_text))
         }
     }
 
@@ -202,8 +204,9 @@ impl MLServiceClient {
                 .map_err(|e| anyhow!("Failed to parse batch analysis response: {}", e))?;
             Ok(result)
         } else {
+            let status = response.status();
             let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
-            Err(anyhow!("Batch analysis failed with status {}: {}", response.status(), error_text))
+            Err(anyhow!("Batch analysis failed with status {}: {}", status, error_text))
         }
     }
 

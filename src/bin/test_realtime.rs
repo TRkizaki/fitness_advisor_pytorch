@@ -90,7 +90,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !latencies.is_empty() {
         let avg_latency = latencies.iter().sum::<f64>() / latencies.len() as f64;
         let min_latency = latencies.iter().fold(f64::INFINITY, |a, &b| a.min(b));
-        let max_latency = latencies.iter().fold(0.0, |a, &b| a.max(b));
+        let max_latency = latencies.iter().fold(0.0f64, |a, &b| a.max(b));
         
         let within_target_count = latencies.iter().filter(|&&lat| lat < 50.0).count();
         let success_rate = (within_target_count as f64 / latencies.len() as f64) * 100.0;
