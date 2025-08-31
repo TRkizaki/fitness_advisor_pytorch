@@ -7,12 +7,37 @@ A high-performance fitness application with hybrid Rust/Python architecture, com
 ```
 ┌─────────────────────┐    HTTP/JSON    ┌───────────────────────┐
 │   Rust Core API     │◄──────────────►│  Python ML Service   │
-│ • WebSocket Handler │                 │ • FastAPI Server      │
-│ • Database          │                 │ • ML Models           │ 
-│ • Business Logic    │                 │ • MediaPipe/PyTorch   │
-│ • Real-time API     │                 │ • Form Analysis       │
+│ • Modular Design    │                 │ • FastAPI Server      │
+│ • API Handlers      │                 │ • ML Models           │ 
+│ • WebSocket Streams │                 │ • MediaPipe/PyTorch   │
+│ • Database Layer    │                 │ • Form Analysis       │
+│ • Business Logic    │                 │ • Real-time Analysis  │
 └─────────────────────┘                 └───────────────────────┘
         Port 3000                              Port 8001
+```
+
+### Modular Rust Architecture
+
+The application follows a clean modular design pattern:
+
+```
+src/
+├── main.rs                    # Application entry point & core business logic
+├── api.rs                     # HTTP API endpoint handlers
+├── database.rs                # Database operations & SQLite integration
+├── websocket.rs               # Real-time WebSocket streaming
+├── ai_analytics/              # AI motion analysis components
+│   ├── mod.rs                 # Module exports
+│   └── motion_analyzer.rs     # Form analysis & pose estimation
+├── models/                    # Data models & types
+│   ├── mod.rs                 # Unified model exports
+│   ├── user.rs                # User & preferences data structures
+│   ├── exercise.rs            # Exercise & workout data models
+│   ├── workout.rs             # Workout sessions & progress tracking
+│   └── system.rs              # System status & API response types
+├── advisors/                  # Business logic & optimization
+├── config.rs                  # Configuration management
+└── ml_client.rs               # Python ML service client
 ```
 
 ## Key Features
@@ -431,17 +456,35 @@ curl http://localhost:8001/models/status | jq
 
 ### Project Structure
 ```
-fitness_advisor/
+fitness_advisor_ai/
 ├── src/
-│   ├── main.rs              # Main Rust application
-│   ├── ml_client.rs         # ML service HTTP client
-│   ├── config.rs            # Configuration management
-│   └── database.rs          # Database operations
-├── config/default.toml      # Application configuration
-├── ml_service.py            # Python FastAPI ML service
-├── requirements.txt         # Python dependencies
-├── start_services.sh        # Service startup script
-└── test_integration.py      # Integration test suite
+│   ├── main.rs                    # Application entry point & core business logic
+│   ├── api.rs                     # HTTP API endpoint handlers  
+│   ├── database.rs                # Database operations & SQLite integration
+│   ├── websocket.rs               # Real-time WebSocket streaming
+│   ├── ml_client.rs               # Python ML service HTTP client
+│   ├── config.rs                  # Configuration management
+│   ├── ai_analytics/              # AI motion analysis components
+│   │   ├── mod.rs                 # Module exports
+│   │   └── motion_analyzer.rs     # Form analysis & pose estimation
+│   ├── models/                    # Data models & type definitions
+│   │   ├── mod.rs                 # Unified model exports
+│   │   ├── user.rs                # User & preferences structures
+│   │   ├── exercise.rs            # Exercise & workout data models
+│   │   ├── workout.rs             # Workout sessions & progress tracking
+│   │   ├── system.rs              # System status & API response types
+│   │   ├── food.rs                # Nutrition & food data models
+│   │   └── optimization.rs        # Menu optimization data structures
+│   ├── advisors/                  # Business logic & optimization algorithms
+│   │   └── menu_optimizer/        # Genetic algorithm meal planning
+│   ├── core/                      # Core utilities & metrics
+│   ├── sample_data/               # Demo data creation & seeding
+│   └── bin/                       # Additional executables
+├── config/                        # Configuration files
+├── ml_service.py                  # Python FastAPI ML service
+├── requirements.txt               # Python dependencies
+├── start_services.sh              # Service startup script
+└── test_integration.py            # Integration test suite
 ```
 
 ### Development Guidelines
