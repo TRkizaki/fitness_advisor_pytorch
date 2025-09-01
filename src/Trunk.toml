@@ -1,0 +1,17 @@
+[build]
+target = "index.html"
+dist = "dist"
+
+[serve]
+address = "127.0.0.1"
+port = 8080
+open = true
+
+[watch]
+watch = ["src", "styles"]
+ignore = ["dist"]
+
+[[hooks]]
+stage = "build"
+command = "wasm-pack"
+command_arguments = ["build", "--target", "web", "--no-typescript"]

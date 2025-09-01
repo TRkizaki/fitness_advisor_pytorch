@@ -3,47 +3,8 @@ import { Button } from "./ui/button";
 import { Slider } from "./ui/slider";
 import { Badge } from "./ui/badge";
 import { Brain, Utensils, Zap, Timer } from "lucide-react";
-import { useState } from "react";
-import { FitnessApiClient } from "../api/client";
 
 export function MenuOptimization() {
-  const [calorieTarget, setCalorieTarget] = useState(1960);
-  const [proteinTarget, setProteinTarget] = useState(133);
-  const [carbLimit, setCarbLimit] = useState(180);
-  const [fatTarget, setFatTarget] = useState(70);
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState(null);
-
-  const handleOptimization = async () => {
-    setIsOptimizing(true);
-    try {
-      const request = {
-        user_id: "demo_user",
-        time_horizon_days: 7,
-        objectives: ["MaximizeNutrition", "BalanceMacros", "MinimizeCost"],
-        constraints: {
-          daily_calories: {
-            min: calorieTarget * 0.9,
-            max: calorieTarget * 1.1,
-            target: calorieTarget,
-          },
-          macros: {
-            protein_g: { min: proteinTarget * 0.8, max: proteinTarget * 1.2 },
-            carbs_g: { min: carbLimit * 0.7, max: carbLimit * 1.3 },
-            fat_g: { min: fatTarget * 0.8, max: fatTarget * 1.2 },
-          },
-        },
-      };
-      
-      const result = await FitnessApiClient.optimizeMealPlan(request);
-      setOptimizationResult(result);
-    } catch (error) {
-      console.error('Optimization failed:', error);
-    } finally {
-      setIsOptimizing(false);
-    }
-  };
-
   const mealPlan = [
     {
       meal: "Breakfast",
@@ -111,13 +72,9 @@ export function MenuOptimization() {
             </div>
             
             <div className="space-y-3">
-              <Button 
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                onClick={handleOptimization}
-                disabled={isOptimizing}
-              >
+              <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                 <Brain className="h-4 w-4 mr-2" />
-                {isOptimizing ? 'Optimizing...' : 'Optimize Meal Plan'}
+                Optimize Meal Plan
               </Button>
               <div className="flex gap-2">
                 <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">

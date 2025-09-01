@@ -1,0 +1,7 @@
+pub mod navigation;
+pub mod stats_cards;
+pub mod workout_panel;
+pub mod menu_optimization;
+pub mod progress_charts;
+pub mod quick_actions;
+pub mod icons;
