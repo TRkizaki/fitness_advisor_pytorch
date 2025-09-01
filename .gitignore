@@ -1,1 +1,8 @@
 /target
+node_modules/
+*.db
+*.log
+.env
+dist/
+build/
+pkg/

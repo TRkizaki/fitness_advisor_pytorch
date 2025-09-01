@@ -1,0 +1,16 @@
+[build]
+target = "index.html"
+
+[watch]
+watch = ["src", "Cargo.toml"]
+ignore = ["target"]
+
+[serve]
+address = "127.0.0.1"
+port = 8080
+open = false
+
+[[hooks]]
+stage = "pre_build"
+command = "cargo"
+command_arguments = ["build", "--bin", "leptos_frontend", "--target", "wasm32-unknown-unknown"]
