@@ -13,4 +13,4 @@ open = false
 [[hooks]]
 stage = "pre_build"
 command = "cargo"
-command_arguments = ["build", "--bin", "leptos_frontend", "--target", "wasm32-unknown-unknown"]
+command_arguments = ["build", "--lib", "--target", "wasm32-unknown-unknown", "--features", "hydrate"]
