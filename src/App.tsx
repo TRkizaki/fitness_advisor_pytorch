@@ -1,9 +1,9 @@
 import { Navigation } from "./components/Navigation";
 import { StatsCards } from "./components/StatsCards";
 import { WorkoutPanel } from "./components/WorkoutPanel";
-import { MenuOptimization } from "./components/MenuOptimization";
 import { ProgressCharts } from "./components/ProgressCharts";
 import { QuickActions } from "./components/QuickActions";
+import { ApiTest } from "./components/ApiTest";
 
 export default function App() {
   return (
@@ -32,8 +32,8 @@ export default function App() {
           {/* Workout Tracking Panel */}
           <WorkoutPanel />
           
-          {/* Menu Optimization */}
-          <MenuOptimization />
+          {/* Backend API Integration Test */}
+          <ApiTest />
           
           {/* Progress Charts */}
           <div className="space-y-6">

@@ -12,9 +12,10 @@ use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
 use crate::{
-    AppState, ApiResponse, FitnessGoal,
+    ApiResponse, FitnessGoal,
     models::optimization,
 };
+use super::AppState;
 
 #[derive(Deserialize)]
 pub struct CreateUserRequest {

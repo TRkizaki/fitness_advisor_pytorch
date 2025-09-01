@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+// AppState will be defined in main.rs since it needs complex imports
+
 #[derive(Serialize)]
 pub struct ApiResponse<T> {
     pub success: bool,

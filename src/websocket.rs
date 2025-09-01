@@ -6,7 +6,7 @@ use axum::{
 use tracing::{info, warn};
 use anyhow::Result;
 
-use crate::AppState;
+use super::AppState;
 
 pub async fn websocket_handler(
     ws: WebSocketUpgrade,

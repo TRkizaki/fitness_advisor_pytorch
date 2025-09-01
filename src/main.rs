@@ -16,6 +16,8 @@ use anyhow::Result;
 use uuid::Uuid;
 use tracing::{info, warn};
 
+// Re-export AppState for lib.rs
+
 // Database imports
 use database::DatabaseManager;
 use ml_client::MLServiceClient;
@@ -23,7 +25,6 @@ use config::Config;
 use advisors::{MenuOptimizer, menu_optimizer::DataLoader};
 use models::*;
 use ai_analytics::*;
-
 
 pub struct FitnessAdvisor {
     db: Arc<DatabaseManager>,
@@ -199,6 +200,7 @@ impl FitnessAdvisor {
     }
 }
 
+#[derive(Clone)]
 pub struct AppState {
     pub advisor: Arc<FitnessAdvisor>,
     pub ai_analyzer: Arc<AIMotionAnalyzer>,
@@ -206,7 +208,6 @@ pub struct AppState {
     pub menu_optimizer: Arc<MenuOptimizer>,
     pub config: Arc<Config>,
 }
-
 
 pub async fn start_server(advisor: FitnessAdvisor, config: Config) -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
