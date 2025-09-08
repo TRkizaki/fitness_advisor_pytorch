@@ -68,6 +68,18 @@ rand_distr = "0.4"             # Statistical distributions
 rayon = "1.7"                  # Parallel processing for optimization
 async-trait = "0.1"            # Async traits for optimization algorithms
 
+# RAG (Retrieval-Augmented Generation) system - Hybrid approach
+# Core embedding infrastructure (modular approach)
+ort = "1.16"                   # ONNX Runtime for embeddings
+hf-hub = "0.3"                 # Hugging Face Hub integration  
+tokenizers = "0.19"            # Text tokenization
+qdrant-client = "1.14.0"       # Vector database client (updated version)
+serde_derive = "1.0"           # For serializing embeddings
+
+# Document processing
+text-splitter = "0.13"         # Document chunking
+pdf-extract = "0.7"            # PDF text extraction
+scraper = "0.20"               # Web scraping for knowledge ingestion
 
 # Testing
 axum-test = "15.0"
