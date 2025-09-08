@@ -141,7 +141,7 @@ impl SemanticSearch {
     }
 
     pub fn compute_similarity_scores(&self, query_embedding: &[f32], results: &mut [SearchResult]) {
-        for result in results {
+        for result in &mut *results {
             if let Some(ref chunk_embedding) = result.chunk.embedding {
                 let similarity = self.embedding_service.cosine_similarity(query_embedding, chunk_embedding);
                 result.score = similarity;

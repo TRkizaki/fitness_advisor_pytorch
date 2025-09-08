@@ -81,5 +81,9 @@ text-splitter = "0.13"         # Document chunking
 pdf-extract = "0.7"            # PDF text extraction
 scraper = "0.20"               # Web scraping for knowledge ingestion
 
+# MCP (Model Context Protocol) server
+jsonwebtoken = "9.2"           # JWT authentication for MCP
+
 # Testing
 axum-test = "15.0"
+tempfile = "3.8"               # Temporary files for testing

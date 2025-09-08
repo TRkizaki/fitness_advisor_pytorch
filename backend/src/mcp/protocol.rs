@@ -39,12 +39,13 @@ impl MCPProtocol {
     }
 
     pub fn handle_message(&mut self, message: JsonRpcMessage) -> Result<Option<JsonRpcMessage>> {
+        let message_id = message.id.clone();
         match message.content {
             MessageContent::Request(request) => {
-                let response = self.handle_request(request, message.id)?;
+                let response = self.handle_request(request, message_id.clone())?;
                 Ok(Some(JsonRpcMessage {
                     jsonrpc: "2.0".to_string(),
-                    id: message.id,
+                    id: message_id,
                     content: MessageContent::Response(response),
                 }))
             }
