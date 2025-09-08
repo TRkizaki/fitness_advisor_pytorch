@@ -1,7 +1,9 @@
 import { Navigation } from "./components/Navigation";
 import { StatsCards } from "./components/StatsCards";
 import { WorkoutPanel } from "./components/WorkoutPanel";
+import { NutritionPanel } from "./components/NutritionPanel";
 import { ProgressCharts } from "./components/ProgressCharts";
+import { SeasonalOptimization } from "./components/SeasonalOptimization";
 import { QuickActions } from "./components/QuickActions";
 import { ApiTest } from "./components/ApiTest";
 
@@ -32,14 +34,17 @@ export default function App() {
           {/* Workout Tracking Panel */}
           <WorkoutPanel />
           
+          {/* Nutrition Center Panel */}
+          <NutritionPanel />
+          
           {/* Backend API Integration Test */}
           <ApiTest />
           
           {/* Progress Charts */}
-          <div className="space-y-6">
-            <h2 className="text-2xl text-white">Progress Analytics</h2>
-            <ProgressCharts />
-          </div>
+          <ProgressCharts />
+          
+          {/* Seasonal Optimization */}
+          <SeasonalOptimization />
           
           {/* Quick Actions */}
           <QuickActions />
