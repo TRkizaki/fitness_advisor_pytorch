@@ -5,3 +5,5 @@ pub mod menu_optimization;
 pub mod progress_charts;
 pub mod quick_actions;
 pub mod icons;
+pub mod api_test;
+pub mod nutrition_panel;

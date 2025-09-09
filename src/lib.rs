@@ -3,6 +3,7 @@ use leptos_meta::*;
 use leptos::mount::mount_to_body;
 
 mod components;
+mod api;
 use components::{
     navigation::Navigation,
     stats_cards::StatsCards,
@@ -10,11 +11,17 @@ use components::{
     menu_optimization::MenuOptimization,
     progress_charts::ProgressCharts,
     quick_actions::QuickActions,
+    api_test::ApiTest,
+    nutrition_panel::NutritionPanel,
 };
 
 #[component]
 pub fn App() -> impl IntoView {
     provide_meta_context();
+    
+    // Provide WebSocket context
+    let ws_context = api::provide_websocket_context("ws://localhost:3000/api/ai/realtime");
+    provide_context(ws_context);
 
     view! {
         <Html attr:lang="en"/>
@@ -43,8 +50,14 @@ pub fn App() -> impl IntoView {
                         <StatsCards/>
                     </div>
                     
+                    // Backend API Integration Test
+                    <ApiTest/>
+                    
                     // Workout Tracking Panel
                     <WorkoutPanel/>
+                    
+                    // Smart Nutrition Center
+                    <NutritionPanel/>
                     
                     // Menu Optimization
                     <MenuOptimization/>
@@ -54,6 +67,9 @@ pub fn App() -> impl IntoView {
                         <h2 class="text-2xl text-white">"Progress Analytics"</h2>
                         <ProgressCharts/>
                     </div>
+                    
+                    // Real-time WebSocket Integration  
+                    <api::RealtimeWorkoutTracker/>
                     
                     // Quick Actions
                     <QuickActions/>
