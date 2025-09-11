@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>, axum::Json<RAGQueryRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<RAGResponse>>, axum::http::StatusCode>> {rag_query}
-fn(axum::extract::State<AppState>, axum::Json<RAGQueryRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<RAGResponse>>, axum::http::StatusCode>> {rag_query}: Handler<_, _>

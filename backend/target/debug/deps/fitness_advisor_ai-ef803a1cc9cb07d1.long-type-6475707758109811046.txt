@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>, axum::Json<SearchRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<Vec<SearchResult>>>, axum::http::StatusCode>> {semantic_search}
-fn(axum::extract::State<AppState>, axum::Json<SearchRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<Vec<SearchResult>>>, axum::http::StatusCode>> {semantic_search}: Handler<_, _>

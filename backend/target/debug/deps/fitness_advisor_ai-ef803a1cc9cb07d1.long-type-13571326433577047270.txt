@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>, axum::extract::Path<uuid::Uuid>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<()>>, axum::http::StatusCode>> {delete_document}
-fn(axum::extract::State<AppState>, axum::extract::Path<uuid::Uuid>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<()>>, axum::http::StatusCode>> {delete_document}: Handler<_, _>

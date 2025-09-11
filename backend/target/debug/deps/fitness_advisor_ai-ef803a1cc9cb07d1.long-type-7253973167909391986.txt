@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>, axum::Json<AddDocumentRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<uuid::Uuid>>, axum::http::StatusCode>> {add_text_document}
-fn(axum::extract::State<AppState>, axum::Json<AddDocumentRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<uuid::Uuid>>, axum::http::StatusCode>> {add_text_document}: Handler<_, _>

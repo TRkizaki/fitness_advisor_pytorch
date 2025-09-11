@@ -1,2 +1,0 @@
-fn(axum::extract::State<AppState>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<Vec<rag::types::Document>>>, axum::http::StatusCode>> {list_documents}
-fn(axum::extract::State<AppState>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<Vec<rag::types::Document>>>, axum::http::StatusCode>> {list_documents}: Handler<_, _>
