@@ -7,3 +7,6 @@ pub mod quick_actions;
 pub mod icons;
 pub mod api_test;
 pub mod nutrition_panel;
+pub mod semantic_search;
+pub mod knowledge_base_panel;
+pub mod document_manager;
