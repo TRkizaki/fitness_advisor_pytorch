@@ -111,6 +111,7 @@ pub fn WorkoutPanel() -> impl IntoView {
         }
     };
 
+
     view! {
         <div class="bg-black/40 backdrop-blur-lg border border-white/10 rounded-lg text-white">
             <div class="p-6 border-b border-white/10">
@@ -320,6 +321,7 @@ pub fn WorkoutPanel() -> impl IntoView {
                                 </div>
                             </div>
                         }.into(),
+
                         
                         _ => view! {
                             <div class="space-y-4">

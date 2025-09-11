@@ -1,10 +1,10 @@
-# Fitness Advisor AI - Leptos WebAssembly Frontend
+# Fitness Advisor AI - Leptos Frontend Implementation
 
-A high-performance fitness advisor application built with **Leptos** and **WebAssembly**, providing AI-powered workout tracking, nutrition analysis, and personalized recommendations.
+A high-performance fitness advisor application built with **Leptos** and **WebAssembly**, offering a modern reactive web interface with comprehensive workout tracking, nutrition management, and real-time AI integration.
 
 ## Branch Overview
 
-This is the `leptos-frontend-wip` branch, featuring a complete **Leptos WebAssembly frontend** that mirrors the functionality of the React implementation while leveraging Rust's performance benefits.
+This is the `leptos-frontend-wip` branch, featuring a complete **Leptos WebAssembly frontend implementation** that integrates with the Rust backend for fitness and nutrition management.
 
 ## Tech Stack
 
@@ -256,9 +256,11 @@ port = 8080
 ## Related Branches
 
 - `main` - Core Rust backend implementation
-- `mcp-server-development-with-react-frontend` - React frontend with MCP integration
-- `advanced-feature` - Advanced features and optimizations
+- `leptos-frontend-wip` - **Current branch** - Base Leptos WebAssembly frontend implementation
+- `react-frontend-integration` - React frontend with backend integration
 - `rag-system-development` - RAG knowledge system implementation
+- `rag-system-development-leptos` - RAG system with Leptos frontend
+- `mcp-server-development-with-react-frontend` - React frontend with MCP integration
 
 ## License
 

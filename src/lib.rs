@@ -59,6 +59,7 @@ pub fn App() -> impl IntoView {
                     // Smart Nutrition Center
                     <NutritionPanel/>
                     
+                    
                     // Menu Optimization
                     <MenuOptimization/>
                     

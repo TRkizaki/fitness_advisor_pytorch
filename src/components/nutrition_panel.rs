@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use crate::components::icons::*;
-use crate::api::{FitnessApiClient, User, OptimizationRequest, OptimizationConstraints, CalorieConstraints, MacroConstraints, MacroRange};
+use crate::api::{
+    FitnessApiClient, User, OptimizationRequest, OptimizationConstraints, CalorieConstraints, MacroConstraints, MacroRange
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -108,6 +110,7 @@ pub fn NutritionPanel() -> impl IntoView {
             });
         }
     };
+
 
     view! {
         <div class="bg-black/40 backdrop-blur-lg border border-white/10 rounded-lg text-white">
@@ -401,6 +404,7 @@ pub fn NutritionPanel() -> impl IntoView {
                                 </div>
                             </div>
                         }.into(),
+
                         
                         _ => view! {
                             <div class="space-y-6">
