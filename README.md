@@ -19,24 +19,39 @@ This is the `leptos-frontend-wip` branch, featuring a complete **Leptos WebAssem
 ## Project Structure
 
 ```
-src/
-├── api/
-│   ├── client.rs              # HTTP API client for backend integration
-│   ├── websocket.rs           # WebSocket service for real-time updates
-│   └── mod.rs                 # API module exports
-├── components/
-│   ├── navigation.rs          # Top navigation bar
-│   ├── stats_cards.rs         # Dashboard statistics cards
-│   ├── workout_panel.rs       # Smart workout center with live tracking
-│   ├── nutrition_panel.rs     # Advanced nutrition center with AI meal plans
-│   ├── menu_optimization.rs   # Menu optimization algorithms
-│   ├── progress_charts.rs     # Progress visualization charts
-│   ├── quick_actions.rs       # Quick action buttons
-│   ├── api_test.rs            # Backend API integration testing
-│   ├── icons.rs              # SVG icon components
-│   └── mod.rs                # Component module exports
-├── lib.rs                    # Main application and routing
-└── main.rs                   # Entry point for standalone builds
+fitness_advisor_ai/
+├── frontend/                  # Leptos WebAssembly frontend
+│   ├── src/
+│   │   ├── api/
+│   │   │   ├── client.rs      # HTTP API client for backend integration
+│   │   │   ├── websocket.rs   # WebSocket service for real-time updates
+│   │   │   └── mod.rs         # API module exports
+│   │   ├── components/
+│   │   │   ├── navigation.rs          # Top navigation bar
+│   │   │   ├── stats_cards.rs         # Dashboard statistics cards
+│   │   │   ├── workout_panel.rs       # Smart workout center with live tracking
+│   │   │   ├── nutrition_panel.rs     # Advanced nutrition center with AI meal plans
+│   │   │   ├── menu_optimization.rs   # Menu optimization algorithms
+│   │   │   ├── progress_charts.rs     # Progress visualization charts
+│   │   │   ├── quick_actions.rs       # Quick action buttons
+│   │   │   ├── api_test.rs            # Backend API integration testing
+│   │   │   ├── icons.rs              # SVG icon components
+│   │   │   └── mod.rs                # Component module exports
+│   │   ├── lib.rs            # Main application and routing
+│   │   └── main.rs           # Entry point for standalone builds
+│   ├── Cargo.toml            # Rust dependencies
+│   ├── Trunk.toml            # Trunk build configuration
+│   └── index.html            # HTML template
+├── backend/                  # Rust backend services
+│   ├── src/
+│   │   ├── advisors/         # Fitness advisory algorithms
+│   │   ├── models/           # Data models and schemas
+│   │   ├── core/            # Core utilities and errors
+│   │   └── main.rs          # Backend application entry point
+│   └── Cargo.toml           # Backend Rust dependencies
+├── ml-services/             # Python ML processing services
+├── docs/                    # Documentation and guides
+└── scripts/                 # Build and utility scripts
 ```
 
 ## Key Features
@@ -87,6 +102,7 @@ src/
 
 2. **Install Rust dependencies**:
    ```bash
+   cd frontend
    cargo build
    ```
 
@@ -103,19 +119,30 @@ src/
 
 ### Development Server
 
-Start the development server with hot reloading:
+Start the Leptos frontend development server:
 
 ```bash
+cd frontend
 trunk serve
 ```
 
 The application will be available at `http://localhost:8080`
+
+Start the Rust backend server (separate terminal):
+
+```bash
+cd backend  
+cargo run
+```
+
+The backend API will be available at `http://localhost:3000`
 
 ### Build for Production
 
 Create an optimized production build:
 
 ```bash
+cd frontend
 trunk build --release
 ```
 

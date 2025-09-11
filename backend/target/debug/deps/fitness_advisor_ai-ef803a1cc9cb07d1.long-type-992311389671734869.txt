@@ -1,0 +1,2 @@
+fn(axum::extract::State<AppState>, axum::Json<AddUrlRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<uuid::Uuid>>, axum::http::StatusCode>> {add_url_document}
+fn(axum::extract::State<AppState>, axum::Json<AddUrlRequest>) -> impl std::future::Future<Output = std::result::Result<axum::Json<api::ApiResponse<uuid::Uuid>>, axum::http::StatusCode>> {add_url_document}: Handler<_, _>
