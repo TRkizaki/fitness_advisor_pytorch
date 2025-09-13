@@ -1,6 +1,8 @@
 use leptos::prelude::*;
 use crate::components::icons::*;
 use crate::api::{FitnessApiClient, User, FrameAnalysisResponse};
+use crate::api::rag_client::{RagApiClient, RecommendationRequest, RecommendationType, UserContext, SmartRecommendation};
+use serde_json::json;
 
 #[derive(Clone)]
 struct FormMetric {
@@ -61,6 +63,8 @@ pub fn WorkoutPanel() -> impl IntoView {
     let (analysis_running, set_analysis_running) = signal(false);
     let (error, set_error) = signal(String::new());
     let (active_tab, set_active_tab) = signal("live".to_string());
+    let (recommendations, set_recommendations) = signal(Vec::<SmartRecommendation>::new());
+    let (rec_loading, set_rec_loading) = signal(false);
     
     // Static form metrics for demo
     let metrics = vec![
@@ -187,6 +191,16 @@ pub fn WorkoutPanel() -> impl IntoView {
                         on:click=move |_| set_active_tab.set("history".to_string())
                     >
                         "📊 Progress"
+                    </button>
+                    <button 
+                        class=move || format!("px-4 py-2 rounded-md text-sm transition-all {}",
+                            if active_tab.get() == "ai_recs" { "bg-purple-600 text-white" } else { "text-white/70 hover:text-white hover:bg-white/10" })
+                        on:click=move |_| {
+                            set_active_tab.set("ai_recs".to_string());
+                            load_ai_recommendations(set_recommendations, set_rec_loading, selected_user.get());
+                        }
+                    >
+                        "🧠 AI Recommendations"
                     </button>
                 </div>
 
@@ -321,6 +335,71 @@ pub fn WorkoutPanel() -> impl IntoView {
                             </div>
                         }.into(),
                         
+                        "ai_recs" => view! {
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-lg font-medium">"AI Workout Recommendations"</h4>
+                                    {move || {
+                                        if rec_loading.get() {
+                                            view! {
+                                                <div class="flex items-center gap-2 text-white/70">
+                                                    <div class="animate-spin w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                                                    "Loading recommendations..."
+                                                </div>
+                                            }.into()
+                                        } else {
+                                            view! { <div></div> }.into()
+                                        }
+                                    }}
+                                </div>
+                                
+                                {move || {
+                                    let recs = recommendations.get();
+                                    if recs.is_empty() && !rec_loading.get() {
+                                        view! {
+                                            <div class="text-center py-8 bg-white/5 rounded-lg border border-dashed border-white/20">
+                                                <div class="text-4xl text-white/40 mb-3">"🧠"</div>
+                                                <h4 class="text-white/60 font-medium mb-2">"AI recommendations will appear here"</h4>
+                                                <p class="text-white/40 text-sm">"Based on your fitness goals and knowledge base"</p>
+                                            </div>
+                                        }.into()
+                                    } else {
+                                        view! {
+                                            <div class="space-y-4">
+                                                {recs.into_iter().map(|rec| {
+                                                    view! {
+                                                        <div class="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-lg border border-white/10 p-4">
+                                                            <div class="flex items-start justify-between mb-3">
+                                                                <h5 class="font-medium text-white">{rec.title}</h5>
+                                                                <span class="text-xs text-white/60 bg-white/20 px-2 py-1 rounded">
+                                                                    {format!("{:.1}% relevance", rec.relevance_score * 100.0)}
+                                                                </span>
+                                                            </div>
+                                                            <p class="text-white/80 text-sm mb-3">{rec.description}</p>
+                                                            {if !rec.action_items.is_empty() {
+                                                                view! {
+                                                                    <div class="space-y-1">
+                                                                        <h6 class="text-xs font-medium text-white/70">"Recommended Actions:"</h6>
+                                                                        <ul class="space-y-1">
+                                                                            {rec.action_items.into_iter().map(|item| {
+                                                                                view! { <li class="text-xs text-white/60">"• " {item}</li> }
+                                                                            }).collect::<Vec<_>>()}
+                                                                        </ul>
+                                                                    </div>
+                                                                }.into()
+                                                            } else {
+                                                                view! { <div></div> }.into()
+                                                            }}
+                                                        </div>
+                                                    }
+                                                }).collect::<Vec<_>>()}
+                                            </div>
+                                        }.into()
+                                    }
+                                }}
+                            </div>
+                        }.into(),
+                        
                         _ => view! {
                             <div class="space-y-4">
                                 <h4 class="text-lg font-medium">"Progress History"</h4>
@@ -369,5 +448,60 @@ pub fn WorkoutPanel() -> impl IntoView {
                 }}
             </div>
         </div>
+    }
+}
+
+// Helper function for loading AI recommendations
+fn load_ai_recommendations(
+    set_recommendations: WriteSignal<Vec<SmartRecommendation>>,
+    set_loading: WriteSignal<bool>,
+    user: Option<User>,
+) {
+    if let Some(user_data) = user {
+        set_loading.set(true);
+        spawn_local(async move {
+            let request = RecommendationRequest {
+                user_context: UserContext {
+                    user_id: user_data.id.clone(),
+                    fitness_goals: vec!["strength".to_string(), "muscle_gain".to_string()],
+                    current_stats: json!({
+                        "age": user_data.age,
+                        "fitness_level": user_data.fitness_level
+                    }),
+                    preferences: vec!["compound_exercises".to_string(), "progressive_overload".to_string()],
+                    workout_history: None,
+                },
+                recommendation_type: RecommendationType::WorkoutPlan,
+                preferences: None,
+                limit: Some(3),
+            };
+
+            match RagApiClient::get_smart_recommendations(request).await {
+                Ok(recs) => {
+                    set_recommendations.set(recs);
+                }
+                Err(_e) => {
+                    // Fallback to sample recommendations
+                    let sample_recs = vec![
+                        SmartRecommendation {
+                            id: "workout_1".to_string(),
+                            title: "Progressive Compound Movement Plan".to_string(),
+                            description: "Focus on compound exercises with systematic progression to build overall strength and muscle mass".to_string(),
+                            recommendation_type: RecommendationType::WorkoutPlan,
+                            relevance_score: 0.94,
+                            supporting_documents: vec!["compound_exercises_guide".to_string()],
+                            action_items: vec![
+                                "Start with bodyweight movements".to_string(),
+                                "Progress to weighted exercises".to_string(),
+                                "Track form and progression weekly".to_string(),
+                            ],
+                            metadata: json!({}),
+                        }
+                    ];
+                    set_recommendations.set(sample_recs);
+                }
+            }
+            set_loading.set(false);
+        });
     }
 }

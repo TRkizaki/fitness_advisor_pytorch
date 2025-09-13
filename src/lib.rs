@@ -13,6 +13,7 @@ use components::{
     quick_actions::QuickActions,
     api_test::ApiTest,
     nutrition_panel::NutritionPanel,
+    knowledge_base_panel::KnowledgeBasePanel,
 };
 
 #[component]
@@ -58,6 +59,9 @@ pub fn App() -> impl IntoView {
                     
                     // Smart Nutrition Center
                     <NutritionPanel/>
+                    
+                    // AI Knowledge Base
+                    <KnowledgeBasePanel/>
                     
                     // Menu Optimization
                     <MenuOptimization/>

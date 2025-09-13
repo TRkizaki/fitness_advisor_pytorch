@@ -1,7 +1,9 @@
 use leptos::prelude::*;
 use crate::components::icons::*;
 use crate::api::{FitnessApiClient, User, OptimizationRequest, OptimizationConstraints, CalorieConstraints, MacroConstraints, MacroRange};
+use crate::api::rag_client::{RagApiClient, RecommendationRequest, RecommendationType, UserContext, SmartRecommendation};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NutritionPlan {
@@ -41,6 +43,8 @@ pub fn NutritionPanel() -> impl IntoView {
     let (loading, set_loading) = signal(false);
     let (error, set_error) = signal(String::new());
     let (generated_plan, set_generated_plan) = signal(None::<serde_json::Value>);
+    let (ai_recommendations, set_ai_recommendations) = signal(Vec::<SmartRecommendation>::new());
+    let (ai_rec_loading, set_ai_rec_loading) = signal(false);
 
     // Load users on component mount
     Effect::new(move |_| {
@@ -193,6 +197,16 @@ pub fn NutritionPanel() -> impl IntoView {
                         on:click=move |_| set_active_tab.set("analysis".to_string())
                     >
                         "🔬 Analysis"
+                    </button>
+                    <button 
+                        class=move || format!("px-4 py-2 rounded-md text-sm transition-all {}",
+                            if active_tab.get() == "ai_nutrition" { "bg-purple-600 text-white" } else { "text-white/70 hover:text-white hover:bg-white/10" })
+                        on:click=move |_| {
+                            set_active_tab.set("ai_nutrition".to_string());
+                            load_nutrition_recommendations(set_ai_recommendations, set_ai_rec_loading, selected_user.get());
+                        }
+                    >
+                        "🧠 AI Nutrition"
                     </button>
                 </div>
 
@@ -402,6 +416,71 @@ pub fn NutritionPanel() -> impl IntoView {
                             </div>
                         }.into(),
                         
+                        "ai_nutrition" => view! {
+                            <div class="space-y-6">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-lg font-medium">"AI Nutrition Recommendations"</h4>
+                                    {move || {
+                                        if ai_rec_loading.get() {
+                                            view! {
+                                                <div class="flex items-center gap-2 text-white/70">
+                                                    <div class="animate-spin w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
+                                                    "Loading recommendations..."
+                                                </div>
+                                            }.into()
+                                        } else {
+                                            view! { <div></div> }.into()
+                                        }
+                                    }}
+                                </div>
+                                
+                                {move || {
+                                    let recs = ai_recommendations.get();
+                                    if recs.is_empty() && !ai_rec_loading.get() {
+                                        view! {
+                                            <div class="text-center py-8 bg-white/5 rounded-lg border border-dashed border-white/20">
+                                                <div class="text-4xl text-white/40 mb-3">"🧠"</div>
+                                                <h4 class="text-white/60 font-medium mb-2">"AI nutrition guidance will appear here"</h4>
+                                                <p class="text-white/40 text-sm">"Personalized advice based on your goals and knowledge base"</p>
+                                            </div>
+                                        }.into()
+                                    } else {
+                                        view! {
+                                            <div class="space-y-4">
+                                                {recs.into_iter().map(|rec| {
+                                                    view! {
+                                                        <div class="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg border border-white/10 p-4">
+                                                            <div class="flex items-start justify-between mb-3">
+                                                                <h5 class="font-medium text-white">{rec.title}</h5>
+                                                                <span class="text-xs text-white/60 bg-white/20 px-2 py-1 rounded">
+                                                                    {format!("{:.1}% relevance", rec.relevance_score * 100.0)}
+                                                                </span>
+                                                            </div>
+                                                            <p class="text-white/80 text-sm mb-3">{rec.description}</p>
+                                                            {if !rec.action_items.is_empty() {
+                                                                view! {
+                                                                    <div class="space-y-1">
+                                                                        <h6 class="text-xs font-medium text-white/70">"Nutrition Actions:"</h6>
+                                                                        <ul class="space-y-1">
+                                                                            {rec.action_items.into_iter().map(|item| {
+                                                                                view! { <li class="text-xs text-white/60">"• " {item}</li> }
+                                                                            }).collect::<Vec<_>>()}
+                                                                        </ul>
+                                                                    </div>
+                                                                }.into()
+                                                            } else {
+                                                                view! { <div></div> }.into()
+                                                            }}
+                                                        </div>
+                                                    }
+                                                }).collect::<Vec<_>>()}
+                                            </div>
+                                        }.into()
+                                    }
+                                }}
+                            </div>
+                        }.into(),
+                        
                         _ => view! {
                             <div class="space-y-6">
                                 <h4 class="text-lg font-medium">"Nutrition Analysis"</h4>
@@ -527,4 +606,59 @@ fn load_sample_nutrition(set_nutrition: WriteSignal<Option<DailyNutrition>>) {
     };
     
     set_nutrition.set(Some(nutrition));
+}
+
+// Helper function for loading nutrition recommendations  
+fn load_nutrition_recommendations(
+    set_recommendations: WriteSignal<Vec<SmartRecommendation>>,
+    set_loading: WriteSignal<bool>,
+    user: Option<User>,
+) {
+    if let Some(user_data) = user {
+        set_loading.set(true);
+        spawn_local(async move {
+            let request = RecommendationRequest {
+                user_context: UserContext {
+                    user_id: user_data.id.clone(),
+                    fitness_goals: vec!["muscle_gain".to_string(), "performance".to_string()],
+                    current_stats: json!({
+                        "age": user_data.age,
+                        "fitness_level": user_data.fitness_level
+                    }),
+                    preferences: vec!["high_protein".to_string(), "balanced_macros".to_string()],
+                    workout_history: None,
+                },
+                recommendation_type: RecommendationType::NutritionAdvice,
+                preferences: None,
+                limit: Some(3),
+            };
+
+            match RagApiClient::get_smart_recommendations(request).await {
+                Ok(recs) => {
+                    set_recommendations.set(recs);
+                }
+                Err(_e) => {
+                    // Fallback to sample recommendations
+                    let sample_recs = vec![
+                        SmartRecommendation {
+                            id: "nutrition_1".to_string(),
+                            title: "Optimal Protein Distribution Strategy".to_string(),
+                            description: "Distribute protein intake evenly throughout the day to maximize muscle protein synthesis and recovery".to_string(),
+                            recommendation_type: RecommendationType::NutritionAdvice,
+                            relevance_score: 0.91,
+                            supporting_documents: vec!["protein_timing_research".to_string()],
+                            action_items: vec![
+                                "Consume 20-30g protein per meal".to_string(),
+                                "Include protein within 2h post-workout".to_string(),
+                                "Consider casein protein before bed".to_string(),
+                            ],
+                            metadata: json!({}),
+                        }
+                    ];
+                    set_recommendations.set(sample_recs);
+                }
+            }
+            set_loading.set(false);
+        });
+    }
 }
