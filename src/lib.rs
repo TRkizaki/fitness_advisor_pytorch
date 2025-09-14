@@ -14,6 +14,7 @@ use components::{
     api_test::ApiTest,
     nutrition_panel::NutritionPanel,
     knowledge_base_panel::KnowledgeBasePanel,
+    mcp_server_panel::McpServerPanel,
 };
 
 #[component]
@@ -62,6 +63,9 @@ pub fn App() -> impl IntoView {
                     
                     // AI Knowledge Base
                     <KnowledgeBasePanel/>
+                    
+                    // MCP Server Integration
+                    <McpServerPanel/>
                     
                     // Menu Optimization
                     <MenuOptimization/>

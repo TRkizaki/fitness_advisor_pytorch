@@ -10,3 +10,4 @@ pub mod nutrition_panel;
 pub mod semantic_search;
 pub mod knowledge_base_panel;
 pub mod document_manager;
+pub mod mcp_server_panel;
